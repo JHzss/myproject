@@ -1,0 +1,10 @@
+*.a
+*.so
+*~
+
+data/
+bin/
+lib/
+*build*/
+*cmake-build-debug*/
+.idea/
