@@ -10,11 +10,16 @@
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/opencv.hpp>
 
+#include "parameters.h"
+
 class Camera {
 public:
+    int id;
+
+    //vector<Pose> camera_poses;//todo pose 类
     typedef shared_ptr<Camera> Ptr;
-    Mat K_;
     double fx_,fy_,cx_,cy_,depth_;
+    Mat K_;
     Mat R_,t_;
     Point2d point_camera_;
     Point   point_uv_;
@@ -26,7 +31,7 @@ public:
     static Point   world2uv(Point3d point_3d_);
     static Point3d camera2world(Point2d point_camera_);
     static Point3d uv2world(Point point_uv_);
-
+    static Mat getK(const Parameters& param);
 
 };
 

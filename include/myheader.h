@@ -28,6 +28,11 @@ using Sophus::SO3;
 #include <string>
 #include <memory>
 
+
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/video/tracking.hpp>
+#include <opencv2/opencv.hpp>
 using namespace std;
 using namespace cv;
 #endif //MYPROJECT_MYHEADER_H

@@ -7,8 +7,8 @@ dataset_dir: /home/jh/data-orb/data/rgbd_dataset_freiburg1_desk
 # fr1
 camera.fx: 517.3
 camera.fy: 516.5
-camera.cx: 325.1
-camera.cy: 249.7
+camera.cx: 318.6
+camera.cy: 255.3
 
 camera.depth_scale: 5000
 

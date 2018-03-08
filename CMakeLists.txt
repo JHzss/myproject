@@ -31,5 +31,10 @@ set(THIRD_PARTY_LIBS
         g2o_core g2o_stuff g2o_types_sba
         )
 include_directories( ${PROJECT_SOURCE_DIR}/include )
-add_library(${PROJECT_NAME} src/Camera.cpp)
+add_library(${PROJECT_NAME}
+        src/Camera.cpp
+        src/parameters.cpp
+        src/Read_dataset.cpp
+        src/Feature_tracking.cpp
+        )
 add_subdirectory( test )
