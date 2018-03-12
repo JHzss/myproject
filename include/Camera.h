@@ -11,21 +11,23 @@
 #include <opencv2/opencv.hpp>
 
 #include "parameters.h"
-
+class Parameters;
 class Camera {
 public:
+    Camera(Parameters& param);
     int id;
-
     //vector<Pose> camera_poses;//todo pose 类
     typedef shared_ptr<Camera> Ptr;
-    double fx_,fy_,cx_,cy_,depth_;
+    const double fx_,fy_,cx_,cy_,depth_;
     Mat K_;
     Mat R_,t_;
     Point2d point_camera_;
     Point   point_uv_;
     Point3d point_3d_;
 public:
-    static Point2d uv2camera(Point point_uv_,Mat K_);
+
+
+    static Point2d uv2camera(Point point_uv_,Mat K_);//todo,还有一些函数没写
     static Point2d world2camera(Point3d point_3d_);
     static Point   camera2uv(Point2d point_camera_,Mat K_);
     static Point   world2uv(Point3d point_3d_);

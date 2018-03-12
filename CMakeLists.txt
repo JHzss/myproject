@@ -36,5 +36,13 @@ add_library(${PROJECT_NAME}
         src/parameters.cpp
         src/Read_dataset.cpp
         src/Feature_tracking.cpp
-        )
+        src/Frame.cpp
+        src/KeyFrame.cpp
+        src/System.cpp
+        src/Feature.cpp
+        src/Initializer.cpp
+        src/Map.cpp
+        src/Optimizer.cpp
+        node/mySlam.cpp)
 add_subdirectory( test )
+add_subdirectory( node )

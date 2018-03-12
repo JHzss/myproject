@@ -5,8 +5,31 @@
 #ifndef MYPROJECT_MAPPOINT_H
 #define MYPROJECT_MAPPOINT_H
 
+#include "myheader.h"
+#include "Frame.h"
 
-class MapPoint {
+class MapPoint
+{
+public:
+
+
+public:
+    typedef shared_ptr<MapPoint> Ptr;
+    const uint64_t id_;
+    Vector3d pose_;
+    Vector3d pose_norm_;
+    Mat descriptor_;
+    int seenTimes_;
+
+    KeyFrame::Ptr refKeyFrame_;//todo 定义keyframe类
+
+    Frame::Ptr firse_seen_;
+    Frame::Ptr last_seen_;
+
+    //尺度变化范围
+    double minDistance_;
+    double maxDistance_;
+
 
 };
 

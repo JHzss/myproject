@@ -11,6 +11,7 @@
 class Parameters
 {
 public:
+    typedef shared_ptr<Parameters> Ptr;
     double camera_fx;
     double camera_fy;
     double camera_cx;

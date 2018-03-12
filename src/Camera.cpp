@@ -3,6 +3,13 @@
 //
 
 #include "../include/Camera.h"
+//const 类型数据必须初始化
+Camera::Camera(Parameters &param):fx_(param.camera_fx),fy_(param.camera_fy),cx_(param.camera_cx),cy_(param.camera_cy),depth_(param.camera_depth)
+{
+    this->K_=getK(param);
+}
+
+
 
 Point2d Camera::uv2camera(Point point_uv_, Mat K_)
 {

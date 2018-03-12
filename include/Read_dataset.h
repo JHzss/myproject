@@ -11,6 +11,7 @@
 class Read_dataset
 {
 public:
+    typedef shared_ptr<Read_dataset> Ptr;
     vector<string> rgb_files,depth_files;
     vector<double > rgb_times,depth_times;
 public:

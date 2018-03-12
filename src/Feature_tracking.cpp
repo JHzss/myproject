@@ -3,7 +3,10 @@
 //
 
 #include "Feature_tracking.h"
-
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/video/tracking.hpp>
+#include <opencv2/opencv.hpp>
 #include "myheader.h"
 
 bool cmp(DMatch m1,DMatch m2)
@@ -43,7 +46,7 @@ bool Feature_tracking::initialization(const Parameters& param, Camera& camera)
 {
 
     //想要替换其他参数在参数头文件里添加即可。
-    Ptr<ORB> orb_detecter=cv::ORB::create(param.number_of_features,1.2f,8,31,0,2,ORB::HARRIS_SCORE,31,20);
+    cv::Ptr<ORB> orb_detecter=cv::ORB::create(param.number_of_features,1.2f,8,31,0,2,ORB::HARRIS_SCORE,31,20);
 
     BFMatcher matcher(NORM_HAMMING);
     Mat Essential;
