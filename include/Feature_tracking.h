@@ -10,13 +10,16 @@
 #include "Camera.h"
 #include "Read_dataset.h"
 
+
 class Feature_tracking
 {
+
 public:
     typedef shared_ptr<Feature_tracking > Ptr;
     Feature_tracking();
+
     void loadImage(const string& img_filename);
-    bool initialization(const Parameters& param,Camera& camera);
+    bool initialization(const Parameters::Ptr& param,Camera::Ptr& camera);
     void clearstate();
 public:
     bool init_flag= true;

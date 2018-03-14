@@ -8,6 +8,7 @@
 #include "myheader.h"
 #include "Frame.h"
 
+class Frame;
 
 class KeyFrame:public Frame
 {
@@ -16,8 +17,9 @@ public:
     const uint64_t id_;
     static uint64_t next_id_;//关键帧ID
     const uint64_t frame_id_;//在普通帧中的id
-public:
-    KeyFrame(const Frame& frame);
+    KeyFrame::Ptr creat(std::shared_ptr<Frame>& frame){ return KeyFrame::Ptr(new KeyFrame(frame));}
+
+    KeyFrame(std::shared_ptr<Frame>& frame);
 
 
 };

@@ -7,6 +7,7 @@
 
 #include "myheader.h"
 #include "Frame.h"
+#include "KeyFrame.h"
 
 class MapPoint
 {
@@ -25,10 +26,6 @@ public:
 
     Frame::Ptr firse_seen_;
     Frame::Ptr last_seen_;
-
-    //尺度变化范围
-    double minDistance_;
-    double maxDistance_;
 
 
 };

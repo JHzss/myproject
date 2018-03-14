@@ -42,11 +42,11 @@ void Feature_tracking::loadImage(const string& img_filename)
     imshow("im",cur_img);
 }
 
-bool Feature_tracking::initialization(const Parameters& param, Camera& camera)
+bool Feature_tracking::initialization(const Parameters::Ptr& param, Camera::Ptr& camera)
 {
 
     //想要替换其他参数在参数头文件里添加即可。
-    cv::Ptr<ORB> orb_detecter=cv::ORB::create(param.number_of_features,1.2f,8,31,0,2,ORB::HARRIS_SCORE,31,20);
+    cv::Ptr<ORB> orb_detecter=cv::ORB::create(param->number_of_features,1.2f,8,31,0,2,ORB::HARRIS_SCORE,31,20);
 
     BFMatcher matcher(NORM_HAMMING);
     Mat Essential;
@@ -93,10 +93,11 @@ bool Feature_tracking::initialization(const Parameters& param, Camera& camera)
 
     //2018.3.6晚，完成2D-2D特征匹配。
     //TODO 计算E/F矩阵
-    Essential=findEssentialMat(pre_points,cur_points,camera.K_,RANSAC,0.999,1.0);
+    Essential=findEssentialMat(pre_points,cur_points,camera->getK(),RANSAC,0.999,1.0);
 //        cout<<"Essential matrix:"<<endl;
 //        cout<<Essential<<endl;
-    recoverPose(Essential,pre_points,cur_points,camera.K_,R_estimate,t_estimate);
+    recoverPose(Essential,pre_points,cur_points,camera->getK(),R_estimate,t_estimate);
+
 
     R<<R_estimate.at<double>(0,0),R_estimate.at<double>(0,1),R_estimate.at<double>(0,2),
             R_estimate.at<double>(1,0),R_estimate.at<double>(1,1),R_estimate.at<double>(1,2),
@@ -118,8 +119,8 @@ bool Feature_tracking::initialization(const Parameters& param, Camera& camera)
 
     for(int j=0;j<pre_points.size();j++)
     {
-        pre_points_cam.push_back(Camera::uv2camera(pre_points[j],camera.K_));
-        cur_points_cam.push_back(Camera::uv2camera(cur_points[j],camera.K_));
+        pre_points_cam.push_back(Camera::uv2camera(pre_points[j],camera->getK()));
+        cur_points_cam.push_back(Camera::uv2camera(cur_points[j],camera->getK()));
     }
 
     triangulatePoints(initial_pose,first_pose,pre_points_cam,cur_points_cam,points_position);

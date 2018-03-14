@@ -3,3 +3,8 @@
 //
 
 #include "Feature.h"
+
+Feature::Feature(Vector3d &p) :quality_feature(normal)
+{
+
+}
