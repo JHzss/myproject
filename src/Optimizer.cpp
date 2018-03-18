@@ -3,3 +3,23 @@
 //
 
 #include "Optimizer.h"
+
+void Optimizer::windowBA()
+{
+
+}
+
+void Optimizer::globalBA()
+{
+
+}
+
+void Optimizer::motionBA()
+{
+
+}
+
+void Optimizer::twoViewsBA()
+{
+
+}

@@ -32,11 +32,9 @@ public:
     void addTrack(int& frame_id);                                       //增加特征点的观测
     void eraseTrack(int& frame_id);                                     //删除特征点的观测
 
-    Feature::Ptr creat(Vector3d &p) {return Feature::Ptr(new Feature(p));}
+    inline static Feature::Ptr creat(Vector3d &p) {return Feature::Ptr(new Feature(p));}
     void fuse_feature(Feature::Ptr& feature_bad,Feature::Ptr& feature_good);//融合特征点
 
 
 };
-
-vector<Feature::Ptr> allFeatures_;
 #endif //MYPROJECT_FEATURE_H

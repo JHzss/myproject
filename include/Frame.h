@@ -16,7 +16,8 @@ class Camera;
 class Frame {
 public:
     typedef shared_ptr<Frame> Ptr;
-    int id_,next_id_;
+    uint64_t id_;
+    static uint64_t next_id_;
     const double timestamps_;
     vector<Feature::Ptr> featuresInThisFrame_;//Frame中的特征点
     vector<uint64_t > features_id_lists_;
@@ -30,7 +31,7 @@ public:
     Vector3d t_;
 
 public:
-    Frame(const Mat& img, const double& timeStamps, const int& id, const Camera::Ptr &cam);
+    Frame(const Mat& img, const double& timeStamps,const Camera::Ptr &cam);
     void addFeatureInFrame(Feature::Ptr& feature);
     void eraseFeatureInFrame(Feature::Ptr& feature);
 
@@ -39,7 +40,7 @@ public:
     vector<Point2d> getPoints_cam(const Camera::Ptr &cam);//利用提取出的特征点计算其在相机坐标系下的坐标
     vector<Point3d> getPoints_world(const Camera::Ptr &cam);//利用提取出的特征点计算其在世界坐标系下的坐标
 
-    Frame::Ptr creat(const Mat& img, const double& timeStamps, const int& id, const Camera::Ptr &cam) { return Frame::Ptr(new Frame(img, timeStamps, id,cam));}
+    inline static Frame::Ptr creat(const Mat& img, const double& timeStamps, const Camera::Ptr &cam) { return Frame::Ptr(new Frame(img, timeStamps,cam));}
 
 private:
     Feature::quality_ checkFeatureQuality(const Feature::Ptr& feature){ return feature->quality_feature;}//todo 类的枚举类型怎么用

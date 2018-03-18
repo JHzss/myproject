@@ -37,7 +37,7 @@ public:
     static Point3d camera2world(Point2d point_camera_);
     static Point3d uv2world(Point point_uv_);
     Mat calcK();
-    Camera::Ptr creat(const Parameters::Ptr& param){ return Camera::Ptr(new Camera(param)); }
+    inline static Camera::Ptr creat(const Parameters::Ptr& param){ return Camera::Ptr(new Camera(param)); }
 
 
 };

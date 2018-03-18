@@ -17,7 +17,7 @@ public:
     const uint64_t id_;
     static uint64_t next_id_;//关键帧ID
     const uint64_t frame_id_;//在普通帧中的id
-    KeyFrame::Ptr creat(std::shared_ptr<Frame>& frame){ return KeyFrame::Ptr(new KeyFrame(frame));}
+    inline static KeyFrame::Ptr creat(std::shared_ptr<Frame>& frame){ return KeyFrame::Ptr(new KeyFrame(frame));}
 
     KeyFrame(std::shared_ptr<Frame>& frame);
 

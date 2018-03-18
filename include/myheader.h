@@ -14,6 +14,8 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <opencv2/core/eigen.hpp>
+
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 
@@ -27,7 +29,7 @@ using Sophus::SO3;
 #include <math.h>
 #include <string>
 #include <memory>
-
+#include <thread>
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>

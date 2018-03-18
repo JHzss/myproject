@@ -11,9 +11,11 @@
 class Read_dataset
 {
 public:
+    Read_dataset(const string& dataset);
     typedef shared_ptr<Read_dataset> Ptr;
     vector<string> rgb_files,depth_files;
     vector<double > rgb_times,depth_times;
+    inline static Read_dataset::Ptr creat(const string& dataset){ return Read_dataset::Ptr(new Read_dataset(dataset));}
 public:
     void read_from_dataset(const string& dataset_filename );
 

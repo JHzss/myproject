@@ -5,6 +5,11 @@
 #include "Read_dataset.h"
 #include "myheader.h"
 
+Read_dataset::Read_dataset(const string &dataset)
+{
+    read_from_dataset(dataset);
+}
+
 void Read_dataset::read_from_dataset(const string& dataset_filename )
 {
     string data_file=dataset_filename;

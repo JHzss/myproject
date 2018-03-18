@@ -3,6 +3,14 @@
 //
 #include "myheader.h"
 #include "parameters.h"
+Parameters::Parameters(const string &configFile)
+{
+    FileStorage config(configFile.c_str(),FileStorage::READ);
+    ReadParameters(config);
+    camera_k=(Mat_<double>(3,3)<< camera_fx,0,camera_cx,0,camera_fy,camera_cy,0,0,1.0);
+//    cout<<camera_depth<<endl;
+}
+
 void Parameters::ReadParameters(const FileStorage& filename)
 {
     camera_fx=filename["camera.fx"];
@@ -11,4 +19,10 @@ void Parameters::ReadParameters(const FileStorage& filename)
     camera_cy=filename["camera.cy"];
     camera_depth=filename["camera.depth_scale"];
     number_of_features=filename["number_of_features"];
+    init_dist=filename["init_dist"];
+
+    image_width=filename["image.width"];
+    image_height=filename["image.height"];
+    slideWindowsize=filename["slideWindowsize"];
 }
+

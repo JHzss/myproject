@@ -4,7 +4,8 @@
 #include "myheader.h"
 #include "Frame.h"
 
-Frame::Frame(const Mat &img, const double& timeStamps, const int &id, const Camera::Ptr &cam) :camara_(cam),timestamps_(timeStamps),img_(img),id_(id)
+uint64_t Frame::next_id_=0;
+Frame::Frame(const Mat &img, const double& timeStamps, const Camera::Ptr &cam) :camara_(cam),timestamps_(timeStamps),img_(img),id_(next_id_++)
 {
 
 }
