@@ -17,7 +17,13 @@ void Parameters::ReadParameters(const FileStorage& filename)
     camera_fy=filename["camera.fy"];
     camera_cx=filename["camera.cx"];
     camera_cy=filename["camera.cy"];
-    camera_depth=filename["camera.depth_scale"];
+
+    camera_k1=filename["camera.k1"];
+    camera_k2=filename["camera.k2"];
+    camera_k3=filename["camera.k3"];
+    camera_p1=filename["camera.p1"];
+    camera_p2=filename["camera.p2"];
+
     number_of_features=filename["number_of_features"];
     init_dist=filename["init_dist"];
 

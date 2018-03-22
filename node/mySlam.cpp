@@ -9,7 +9,6 @@
 void process()
 {
 
-
 }
 
 int main(int argc,char** argv)
@@ -19,6 +18,7 @@ int main(int argc,char** argv)
         cout<<"usage:node  data_file_name config_file_name"<<endl;
         return 1;
     }
+
     //string data_file=argv[1];
     Read_dataset::Ptr dataset=Read_dataset::creat(argv[1]);
 //    cout<<dataset->depth_files.size()<<endl;

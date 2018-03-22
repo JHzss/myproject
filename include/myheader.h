@@ -18,11 +18,13 @@
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Matrix3d;
 
 #include <sophus/se3.hpp>
 #include <sophus/so3.hpp>
 using Sophus::SE3;
 using Sophus::SO3;
+using Sophus::Quaterniond;
 
 #include <vector>
 #include <list>
@@ -30,6 +32,7 @@ using Sophus::SO3;
 #include <string>
 #include <memory>
 #include <thread>
+#include <map>
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>

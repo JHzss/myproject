@@ -5,12 +5,16 @@ dataset_dir: /home/jh/data-orb/data/rgbd_dataset_freiburg1_desk
 
 # camera intrinsics
 # fr1
-camera.fx: 517.3
-camera.fy: 516.5
-camera.cx: 318.6
-camera.cy: 255.3
+camera.fx: 517.306408
+camera.fy: 516.469215
+camera.cx: 318.643040
+camera.cy: 255.313989
 
-camera.depth_scale: 5000
+camera.k1: 0.262383
+camera.k2: -0.953104
+camera.p1: -0.005358
+camera.p2: 0.002628
+camera.k3: 1.163314
 
 # VO paras
 number_of_features: 500
@@ -25,6 +29,6 @@ keyframe_translation: 0.1
 image.width: 640
 image.height: 480
 slideWindowsize:10
+#min movement when init
 init_dist:60
-
 

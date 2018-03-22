@@ -20,7 +20,13 @@ public:
     double camera_fy;
     double camera_cx;
     double camera_cy;
-    double camera_depth;
+
+    double camera_k1;
+    double camera_k2;
+    double camera_k3;
+    double camera_p1;
+    double camera_p2;
+
     Mat camera_k;
     int number_of_features;
 
