@@ -43,9 +43,8 @@ public:
     inline static Feature::Ptr creat(Point2f &p) {return Feature::Ptr(new Feature(p));}
 
     static void addTrack(vector<Feature::Ptr>& features, vector<uint64_t > &pre_points_ids,uint64_t frame_id, vector<Point2f>& point,Mat &k);
-
-    void removeRepeatFeature();
-    void fuse_feature();//融合特征点
+    static void fuseSameFeature(vector<Feature::Ptr>& features,uint64_t l);
+    void destoryFeature();
 
 
 };

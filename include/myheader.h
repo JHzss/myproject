@@ -33,6 +33,7 @@ using Sophus::Quaterniond;
 #include <memory>
 #include <thread>
 #include <map>
+#include <iostream>
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>

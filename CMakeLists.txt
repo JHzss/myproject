@@ -50,6 +50,6 @@ add_library(${PROJECT_NAME}
         src/Map.cpp
         src/Optimizer.cpp
         node/mySlam.cpp
-        include/SlideWindow.cpp include/SlideWindow.h)
+        src/SlideWindow.cpp include/SlideWindow.h)
 add_subdirectory( test )
 add_subdirectory( node )

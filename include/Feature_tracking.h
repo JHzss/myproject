@@ -27,7 +27,7 @@ public:
 
     bool loadInitImage(const Mat& image,Frame::Ptr& frame,Parameters::Ptr &para);
     bool initialization(const Parameters::Ptr& para);    //初始化
-      void recoverRT();       //2D-2D恢复姿态
+      bool recoverRT();       //2D-2D恢复姿态
       void recoverStructure(const Parameters::Ptr& para);//恢复总的状态
     void clearstate();
     void initReset();
@@ -41,11 +41,13 @@ public:
 
 
     void solveCamPoseByPnP(int first,int second);
-    void solvePointsByTri(int i,int j);
+    void solvePointsByTri(int i,int j,vector<uint64_t >& pre_points_id_copy, vector<Point2f>& pre_points_f_copy,vector<Point2f>& cur_points_f_copy);
     void addFeature(Point2f &point,uint64_t &frame_id);
+    void fuseFeatures(uint64_t id);
 public:
+    int init_l;  //初始化时使用的帧的id 实际上是第l+1帧
     int init_frame_flag;  //满足相对位移的帧，即与第一帧做初始化的帧数
-    float aver_x,aver_y,aver_k,aver_dist,dist;  //定义运动像素
+    float aver_x,aver_y,aver_k,aver_dist,dist, aver_k_raw;  //定义运动像素
     const int width_,height_,min_init_dist;
     int init_frame_num;
     int init_frame_count;
@@ -74,6 +76,7 @@ public:
 
     vector<Mat> initImg_f;//所有初始化用到的图像
     vector<vector<Point2f> > initFeatures_f;//所有的初始化用到的帧用光流提取出的特征点
+    vector<vector<Point2f> > initFeatures_f_new;//所有的光流没跟到，新检测到的点
 //    vector<vector<Point2f> > raw_Features_f;//光流直接跟踪，没有剔除
     vector<vector<uchar> > raw_status_f;
     //
