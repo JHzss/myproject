@@ -17,7 +17,7 @@
 #include "parameters.h"
 #include "Read_dataset.h"
 #include "Initializer.h"
-#include "SlideWindow.h"
+
 
 
 class System
@@ -26,8 +26,8 @@ public:
 
     typedef shared_ptr<System> Ptr;
 
-    System(const string& config_file);
-    inline static System::Ptr creat(const string& config_file){return System::Ptr(new System(config_file));}
+    System();
+    inline static System::Ptr creat(){return System::Ptr(new System());}
     enum Status {
         begin,
         Init,
@@ -36,18 +36,14 @@ public:
         Track_fail
     } SystemStatus_;
 
-    void Imu_process();
-    void Image_process(const Mat& image,const double& timestamp);
+    void track();
     void Imu_Visual_align();
 
     void slideWindow();                      //边缘化，控制变量
 
     bool checkInit();                        //检测是否可以初始化
 
-    Parameters::Ptr parameters_s;            //参数指针
-    Camera::Ptr camera_s;                    //相机指针
     Initializer::Ptr initializer_s;          //初始化指针
-    SlideWindow::Ptr slideWindow_s;          //滑动窗口
 
     bool init_flag_s;                        //是否可以初始化的标志
     bool result_flag_s;                      //初始化是否成功

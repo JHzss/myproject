@@ -31,7 +31,7 @@ public:
     Vector3d t_;
 
 public:
-    Frame(const Mat& img, const double& timeStamps,const Camera::Ptr &cam);
+    Frame(const Mat& img, const double& timeStamps);
     void addFeatureInFrame(Feature::Ptr& feature);
     void eraseFeatureInFrame(Feature::Ptr& feature);
 
@@ -40,7 +40,7 @@ public:
     vector<Point2d> getPoints_cam(const Camera::Ptr &cam);//利用提取出的特征点计算其在相机坐标系下的坐标
     vector<Point3d> getPoints_world(const Camera::Ptr &cam);//利用提取出的特征点计算其在世界坐标系下的坐标
 
-    inline static Frame::Ptr creat(const Mat& img, const double& timeStamps, const Camera::Ptr &cam) { return Frame::Ptr(new Frame(img, timeStamps,cam));}
+    inline static Frame::Ptr creat(const Mat& img, const double& timeStamps) { return Frame::Ptr(new Frame(img, timeStamps));}
 
 private:
     Feature::quality_ checkFeatureQuality(const Feature::Ptr& feature){ return feature->quality_feature;}//todo 类的枚举类型怎么用

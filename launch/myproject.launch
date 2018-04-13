@@ -1,0 +1,7 @@
+<launch>
+
+    <node name="myproject" pkg="myproject" type="myslam_node" output="screen">
+       <param name="config_file" type="string" value="/home/jh/catkin_ws/src/myproject/config/config.yaml" />
+    </node>
+
+</launch>

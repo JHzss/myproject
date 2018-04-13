@@ -5,7 +5,7 @@
 #include "Frame.h"
 
 uint64_t Frame::next_id_=0;
-Frame::Frame(const Mat &img, const double& timeStamps, const Camera::Ptr &cam) :camara_(cam),timestamps_(timeStamps),img_(img),id_(next_id_++)
+Frame::Frame(const Mat &img, const double& timeStamps) :timestamps_(timeStamps),img_(img),id_(next_id_++)
 {
 
 }

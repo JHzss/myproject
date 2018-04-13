@@ -1,7 +1,7 @@
 //
 // Created by jh on 18-3-8.
 //
-
+#pragma once
 #ifndef MYPROJECT_FEATURE_TRACKING_H
 #define MYPROJECT_FEATURE_TRACKING_H
 
@@ -17,18 +17,18 @@ class Feature_tracking
 {
 public:
     typedef shared_ptr<Feature_tracking > Ptr;
-    Feature_tracking(int width, int height,const Parameters::Ptr& para);
+    Feature_tracking(int width, int height);
 
-    inline static Feature_tracking::Ptr creat(int width, int height,const Parameters::Ptr& para){return Feature_tracking::Ptr(new Feature_tracking(width,height,para));}
+    inline static Feature_tracking::Ptr creat(int width, int height){return Feature_tracking::Ptr(new Feature_tracking(width,height));}
 
     vector<Point2f> getFeaturepointsIn(uint64_t& frame_id);
     vector<uint64_t > getFeatureIdIn(uint64_t& frame_id);
 
 
-    bool loadInitImage(const Mat& image,Frame::Ptr& frame,Parameters::Ptr &para);
-    bool initialization(const Parameters::Ptr& para);    //初始化
+    bool loadInitImage(const Mat& image,Frame::Ptr& frame);
+    bool initialization();    //初始化
       bool recoverRT();       //2D-2D恢复姿态
-      void recoverStructure(const Parameters::Ptr& para);//恢复总的状态
+      void recoverStructure();//恢复总的状态
     void clearstate();
     void initReset();
     void track_new(uint64_t& pre_frame_id,uint64_t& cur_frame_id);
@@ -52,7 +52,6 @@ public:
     int init_frame_num;
     int init_frame_count;
     bool init_flag= true;
-    Mat camera_k;
 
     Mat pre_img_f,cur_img_f;
     Frame::Ptr pre_frame_f,cur_frame_f;

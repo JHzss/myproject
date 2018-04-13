@@ -2,9 +2,9 @@
 // Created by jh on 18-3-5.
 //
 
-#include "../include/Camera.h"
+#include "Camera.h"
 //const 类型数据必须初始化
-Camera::Camera(const Parameters::Ptr& param):fx_(param->camera_fx),fy_(param->camera_fy),cx_(param->camera_cx),cy_(param->camera_cy)
+Camera::Camera():fx_(camera_fx),fy_(camera_fy),cx_(camera_cx),cy_(camera_cy)
 {
     this->K_=calcK();
 }

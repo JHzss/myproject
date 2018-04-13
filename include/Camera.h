@@ -5,17 +5,15 @@
 #ifndef MYPROJECT_CAMERA_H
 #define MYPROJECT_CAMERA_H
 #include "myheader.h"
-#include <opencv2/imgcodecs.hpp>
+//#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/opencv.hpp>
-
 #include "parameters.h"
-class Parameters;
 class Camera {
 public:
     typedef shared_ptr<Camera> Ptr;
-    Camera(const Parameters::Ptr& param);
+    Camera();
 //    int id;
     //vector<Pose> camera_poses;
 private:
@@ -38,7 +36,7 @@ public:
     static Point3d camera2world(Point2d point_camera_);
     static Point3d uv2world(Point point_uv_);
     Mat calcK();
-    inline static Camera::Ptr creat(const Parameters::Ptr& param){ return Camera::Ptr(new Camera(param)); }
+    inline static Camera::Ptr creat(){ return Camera::Ptr(new Camera()); }
 
 
 };

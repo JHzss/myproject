@@ -2,44 +2,35 @@
 // Created by jh on 18-3-8.
 //
 #pragma once
-
+#include <ros/ros.h>
+#include <vector>
+#include <eigen3/Eigen/Dense>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
+#include <fstream>
 #ifndef MYPROJECT_PARAMETERS_H
 #define MYPROJECT_PARAMETERS_H
+extern std::string IMAGE_TOPIC;
+extern std::string IMU_TOPIC;
+void LoadParameters(ros::NodeHandle &n);
 
-#include "myheader.h"
+extern double camera_fx;
+extern double camera_fy;
+extern double camera_cx;
+extern double camera_cy;
 
-class Parameters
-{
-public:
-    friend class Feature_tracking;
-//    friend float get_init_dist();
+extern double camera_k1;
+extern double camera_k2;
+extern double camera_k3;
+extern double camera_p1;
+extern double camera_p2;
 
-    typedef shared_ptr<Parameters> Ptr;
-    static Parameters::Ptr creat(const string& configFile){ return Parameters::Ptr(new Parameters(configFile));}
-    double camera_fx;
-    double camera_fy;
-    double camera_cx;
-    double camera_cy;
+extern cv::Mat camera_k;
+extern int number_of_features;
 
-    double camera_k1;
-    double camera_k2;
-    double camera_k3;
-    double camera_p1;
-    double camera_p2;
-
-    Mat camera_k;
-    int number_of_features;
-
-    int image_width;
-    int image_height;
-    int slideWindowsize;
-    float init_dist;
-
-    void ReadParameters(const FileStorage& filename);
-private:
-     Parameters(const string& configFile);
-
-};
-
+extern int image_width;
+extern int image_height;
+extern int slideWindowsize;
+extern float init_dist;
 
 #endif //MYPROJECT_PARAMETERS_H

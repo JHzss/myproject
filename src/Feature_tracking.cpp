@@ -3,11 +3,11 @@
 //
 
 #include "Feature_tracking.h"
-#include <opencv2/imgcodecs.hpp>
+//#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/opencv.hpp>
-#include "myheader.h"
+
 
 vector<Point3d> normalization(const Mat& points_position_)
 {
@@ -224,9 +224,9 @@ void Feature_tracking::solveCamPoseByPnP(int first,int second)//todo 用到了�
     init_Qs[second]=Eigen::Quaterniond(rvec_eigen);
     init_ts[second]=tvec_eigen;
 
-    Mat img_show6;
-    img_show6=showMatch(initImg_f[first],initImg_f[second],pre_points_f_copy,cur_points_f_copy);
-    imshow("solvePNP",img_show6);
+//    Mat img_show6;
+//    img_show6=showMatch(initImg_f[first],initImg_f[second],pre_points_f_copy,cur_points_f_copy);
+//    imshow("solvePNP",img_show6);
     cout<<"solved:"<<second<<"th camera pose"<<endl;
     cout<<"R"<<rvec<<endl;
     cout<<"t"<<tvec<<endl;
@@ -493,13 +493,13 @@ bool cmp(DMatch m1,DMatch m2)
     return m1.distance<m2.distance;
 }
 
-Feature_tracking::Feature_tracking(int width, int height,const Parameters::Ptr& para)
-        :width_(width),height_(height),init_frame_count(0),aver_x(0),aver_y(0),aver_k(0),aver_k_raw(0),min_init_dist(para->init_dist),camera_k(para->camera_k)
+Feature_tracking::Feature_tracking(int width, int height)
+        :width_(width),height_(height),init_frame_count(0),aver_x(0),aver_y(0),aver_k(0),aver_k_raw(0),min_init_dist(init_dist)
 {
 
 }
 
-bool Feature_tracking::loadInitImage(const Mat& image,Frame::Ptr& frame,Parameters::Ptr& para )
+bool Feature_tracking::loadInitImage(const Mat& image,Frame::Ptr& frame)
 {
     cout<<"loading..."<<init_frame_count<<"th image"<<endl;
     cur_frame_f=frame;
@@ -547,7 +547,7 @@ bool Feature_tracking::loadInitImage(const Mat& image,Frame::Ptr& frame,Paramete
             for(auto f:feature_new) //把新剔除的点添加到该帧对应的特征点中
             {
                 Point2f f_nodistort;
-                f_nodistort=Camera::removeDistort(f,para->camera_k1,para->camera_k2,para->camera_k3,para->camera_p1,para->camera_p2,para->camera_k);
+                f_nodistort=Camera::removeDistort(f,camera_k1,camera_k2,camera_k3,camera_p1,camera_p2,camera_k);
                 if((f_nodistort.x<5)||(f_nodistort.y<5)||(f_nodistort.x>475)||(f_nodistort.y>635))
                 {
                     continue;
@@ -629,9 +629,9 @@ bool Feature_tracking::recoverRT()   //todo 除了设置相机踪的移动的距
         return false;
     }
 
-    Mat img_show3;
-    img_show3=showMatch(initImg_f[0],initImg_f[init_l],points_first,points_l);
-    imshow("solveRT",img_show3);
+//    Mat img_show3;
+//    img_show3=showMatch(initImg_f[0],initImg_f[init_l],points_first,points_l);
+//    imshow("solveRT",img_show3);
 
     E_f=findEssentialMat(points_first,points_l,camera_k);
 
@@ -690,10 +690,10 @@ void Feature_tracking::track_new(uint64_t& pre_frame_id,uint64_t& cur_frame_id)
     Mat img_show2;
     img_show2=showMatch(initImg_f[pre_frame_id],initImg_f[init_frame_count],pre_points,cur_points);
     imshow("Tracking...",img_show2);
-//    waitKey(0);
+    waitKey(500);
 }
 
-void Feature_tracking::recoverStructure(const Parameters::Ptr& para)
+void Feature_tracking::recoverStructure()
 {
     vector<Point2f> pre_points_cam,cur_points_cam;
     init_Qs.resize(init_frame_flag+1);//设置大小
@@ -738,17 +738,17 @@ void Feature_tracking::recoverStructure(const Parameters::Ptr& para)
     cout<<"共同观测点："<<pre_raw_Features_id.size()<<endl;
     //剔除+筛选
     point_filter(pre_raw_Features_id,pre_raw_Features_f,cur_raw_Features_f);
-    Mat imshow5;
-    imshow5=showMatch(initImg_f[0],initImg_f[init_frame_flag],pre_raw_Features_f,cur_raw_Features_f);
-    imshow("光流三角化0-l",imshow5);
+//    Mat imshow5;
+//    imshow5=showMatch(initImg_f[0],initImg_f[init_frame_flag],pre_raw_Features_f,cur_raw_Features_f);
+//    imshow("光流三角化0-l",imshow5);
 
     //变换到相机坐标系，才能进行三角化
     vector<Point3d> points_position_norm;//三角化恢复出的3D特征点,第一帧的相机中
     Mat points4D;
     for(int j=0;j<pre_raw_Features_f.size();j++)
     {
-        pre_points_cam.push_back(Camera::uv2camera(pre_raw_Features_f[j],para->camera_k));
-        cur_points_cam.push_back(Camera::uv2camera(cur_raw_Features_f[j],para->camera_k));
+        pre_points_cam.push_back(Camera::uv2camera(pre_raw_Features_f[j],camera_k));
+        cur_points_cam.push_back(Camera::uv2camera(cur_raw_Features_f[j],camera_k));
     }
 /*
     for(auto pc:pre_points_cam)
@@ -819,7 +819,7 @@ cout<<".......................................................Begin pnp and tri.
         }
     }
     cout<<"具有深度的特征点数量："<<count<<endl;
-    waitKey(0);
+//    waitKey(0);
   ///显示特征点
     //todo 再利用光流跟踪恢复更多特征点的深度，注意当深度恢复不一致时，要筛选
 //    for(int num=1;num<=init_l;num++)
@@ -850,7 +850,7 @@ cout<<".......................................................Begin pnp and tri.
         for(iter=pre_points_new.begin();iter!=pre_points_new.end();) //把新剔除的点添加到该帧对应的特征点中,使用引用，直接进行变换
         {
             Point2f f=*iter;
-            f=Camera::removeDistort(f,para->camera_k1,para->camera_k2,para->camera_k3,para->camera_p1,para->camera_p2,para->camera_k);
+            f=Camera::removeDistort(f,camera_k1,camera_k2,camera_k3,camera_p1,camera_p2,camera_k);
             if((f.x<5)||(f.y<5)||(f.x>475)||(f.y>635))
             {
                 pre_points_new.erase(iter);
@@ -886,7 +886,7 @@ cout<<".......................................................Begin pnp and tri.
             {
                 Point2f& f=cur_points_new[l++];
                 cout<<"pre"<<f<<endl;
-                f=Camera::removeDistort(f,para->camera_k1,para->camera_k2,para->camera_k3,para->camera_p1,para->camera_p2,para->camera_k);
+                f=Camera::removeDistort(f,camera_k1,camera_k2,camera_k3,camera_p1,camera_p2,camera_k);
                 cout<<"cur"<<f<<endl;
                 features_f[id]->addTrack(second,f);//todo 什么问题啊我去
                 features_f[id]->point_pre_camera.push_back(make_pair(second,Camera::uv2camera(f,camera_k)));
@@ -897,7 +897,7 @@ cout<<".......................................................Begin pnp and tri.
             Mat img;
             img= showMatch(initImg_f[first],initImg_f[second],pre_points_new_copy,cur_points_new);
             imshow("new",img);
-            waitKey(0);
+            waitKey(500);
         }
     }
     cout<<"now we have features number: "<<features_f.size()<<endl;
@@ -908,7 +908,7 @@ cout<<".......................................................Begin pnp and tri.
                 cout<<"feature "<<f->id_<<" in Frame "<<f->point_pre_frame[p].first<<" is "<<f->point_pre_frame[p].second<<" and camera frame "<<f->point_pre_camera[p].first<<" is "<<f->point_pre_camera[p].second<<" pose is "<<f->pose_world_<<endl;
             }
         }
-        waitKey(0);
+//        waitKey(0);
     for(int first=0;first<init_l;first++)
     {
         mask = cv::Mat(height_, width_, CV_8UC1, cv::Scalar(255));
@@ -921,8 +921,8 @@ cout<<".......................................................Begin pnp and tri.
             }
 
         }
-        imshow("mask",mask);
-        waitKey(0);
+//        imshow("mask",mask);
+//        waitKey(0);
     }
 
     // TODO 融合相近的特征点
@@ -938,13 +938,13 @@ cout<<".......................................................Begin pnp and tri.
         cout<<init_Qs[cam].toRotationMatrix()<<endl;
         cout<<init_ts[cam]<<endl;
     }
-    waitKey(0);
+//    waitKey(0);
 }
 void Feature_tracking::fuseFeatures(uint64_t id)
 {
 
 }
-bool Feature_tracking::initialization(const Parameters::Ptr& para)
+bool Feature_tracking::initialization()
 {
     cout<<"Begin initialization..."<<endl;
 
@@ -955,7 +955,7 @@ bool Feature_tracking::initialization(const Parameters::Ptr& para)
     }
     cout<<"R:"<<relative_R<<endl;
     cout<<"t:"<<relative_t<<endl;
-    recoverStructure(para);
+    recoverStructure();
 
     //todo 设置第一帧和第l帧的位姿---SE3
 
