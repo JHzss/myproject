@@ -2,21 +2,20 @@
 # data
 # the tum dataset directory, change it to yours! 
 dataset_dir: /home/jh/data-orb/data/rgbd_dataset_freiburg1_desk
-imu_topic: /imu0
-image_topic: /cam0/image_raw
+imu_topic: /imu/data
+image_topic: /camera/image_raw
 
 # camera intrinsics
 # fr1
-camera.fx: 517.306408
-camera.fy: 516.469215
-camera.cx: 318.643040
-camera.cy: 255.313989
+camera.fx: 471.306408
+camera.fy: 473.469215
+camera.cx: 312.643040
+camera.cy: 242.313989
 
 camera.k1: 0.262383
 camera.k2: -0.953104
 camera.p1: -0.005358
 camera.p2: 0.002628
-camera.k3: 1.163314
 
 # VO paras
 number_of_features: 500
@@ -27,6 +26,11 @@ max_num_lost: 10
 min_inliers: 10
 keyframe_rotation: 0.1
 keyframe_translation: 0.1
+
+acc_n: 0.0125
+acc_w: 0.02067
+gyr_n: 0.0006
+gyr_w: 0.000136
 
 image.width: 640
 image.height: 480

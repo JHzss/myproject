@@ -3,14 +3,68 @@
 //
 
 #include "System.h"
+#include "imu_process.h"
 
 System::System():SystemStatus_(Init),currFrame_s(nullptr),refKeyFrame_s(nullptr),init_flag_s(false),load_init_flag_s(false)
 {
     tracker_s=Feature_tracking::creat(image_width,image_height);         //特征跟踪
 }
-
-void System::track()
+/**
+ * @brief 处理IMU数据，包括：
+ * （1）插值法将IMU首尾数据进行对齐
+ * （2）预积分（中值积分），更新J矩阵和P矩阵
+ * （3）更新变量
+ */
+void calcImu(sensor_msgs::ImuPtr imu)
 {
+
+}
+void System::Imu_process(vector<sensor_msgs::ImuPtr> imus)
+{
+    imu_number=0;
+    for(auto imu:imus)
+    {
+//        calcImu(imu);
+        //todo 需要检查一下这里定义成double结果对不对
+        double t=imu->header.stamp.toSec();
+        if(last_time<0)
+            last_time=t;
+        double dt=t-last_time;
+        last_time=t;
+
+        double ba_temp[]{0.0,0.0,0.0};
+        double bg_temp[]{0.0,0.0,0.0};
+        double ax=imu->linear_acceleration.x-ba_temp[0];
+        double ay=imu->linear_acceleration.y-ba_temp[1];
+        double az=imu->linear_acceleration.z-ba_temp[2];
+        double gx=imu->angular_velocity.x-bg_temp[0];
+        double gy=imu->angular_velocity.y-bg_temp[1];
+        double gz=imu->angular_velocity.z-bg_temp[2];
+        //这里逻辑应该是正确的
+        acc_0=acc_1;//上次的IMU数据
+        gyr_0=gyr_1;
+        acc_1=Vector3d(ax,ay,az);//本次IMU数据组成
+        gyr_1=Vector3d(gx,gy,gz);
+        //frame_count 应该是本次的
+        //todo 这个判断方法原理是什么
+        if(!preIntegrations[frame_count])
+            preIntegrations[frame_count]=PreIntegration::creat(acc_0,acc_1,gyr_0,gyr_1,ba[frame_count],bg[frame_count],dt);
+        if(dt!=0)
+        {
+
+            //todo 开始对预积分进行操作
+            preIntegrations[frame_count]->run();
+
+
+            //todo 将IMU和图像对应上，需要定义frame_count,预积分
+        }
+        imu_number++;//表示这两张图像之间的IMU计数，begin对应imu-0
+    }
+}
+
+void System::track(pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement)
+{
+    Imu_process(measurement.first);
 //    cout<<"tracker_s->init_frame_count:"<<tracker_s->init_frame_count<<endl;
 //    pair<vector<sensor_msgs::ImuConstPtr>,sensor_msgs::ImageConstPtr> measurement;
 //
@@ -62,3 +116,4 @@ void System::slideWindow()
 {
 
 }
+

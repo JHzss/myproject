@@ -29,7 +29,7 @@ public:
 
     Mat getK(){ return K_;}
     static Point2d uv2camera(Point2f& point_uv_,Mat K_);//todo,还有一些函数没写
-    static Point2f  removeDistort(Point2f &pre,double k1,double k2,double k3,double p1,double p2,Mat &k_);
+    static Point2f  removeDistort(Point2f &pre,double k1,double k2,double p1,double p2,Mat &k_);
     static Point2d world2camera(Point3d point_3d_);
     static Point2f camera2uv(Point2d point_camera_,Mat K_);
     static Point   world2uv(Point3d point_3d_);

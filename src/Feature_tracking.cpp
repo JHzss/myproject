@@ -547,7 +547,7 @@ bool Feature_tracking::loadInitImage(const Mat& image,Frame::Ptr& frame)
             for(auto f:feature_new) //把新剔除的点添加到该帧对应的特征点中
             {
                 Point2f f_nodistort;
-                f_nodistort=Camera::removeDistort(f,camera_k1,camera_k2,camera_k3,camera_p1,camera_p2,camera_k);
+                f_nodistort=Camera::removeDistort(f,camera_k1,camera_k2,camera_p1,camera_p2,camera_k);
                 if((f_nodistort.x<5)||(f_nodistort.y<5)||(f_nodistort.x>475)||(f_nodistort.y>635))
                 {
                     continue;
@@ -850,7 +850,7 @@ cout<<".......................................................Begin pnp and tri.
         for(iter=pre_points_new.begin();iter!=pre_points_new.end();) //把新剔除的点添加到该帧对应的特征点中,使用引用，直接进行变换
         {
             Point2f f=*iter;
-            f=Camera::removeDistort(f,camera_k1,camera_k2,camera_k3,camera_p1,camera_p2,camera_k);
+            f=Camera::removeDistort(f,camera_k1,camera_k2,camera_p1,camera_p2,camera_k);
             if((f.x<5)||(f.y<5)||(f.x>475)||(f.y>635))
             {
                 pre_points_new.erase(iter);
@@ -886,7 +886,7 @@ cout<<".......................................................Begin pnp and tri.
             {
                 Point2f& f=cur_points_new[l++];
                 cout<<"pre"<<f<<endl;
-                f=Camera::removeDistort(f,camera_k1,camera_k2,camera_k3,camera_p1,camera_p2,camera_k);
+                f=Camera::removeDistort(f,camera_k1,camera_k2,camera_p1,camera_p2,camera_k);
                 cout<<"cur"<<f<<endl;
                 features_f[id]->addTrack(second,f);//todo 什么问题啊我去
                 features_f[id]->point_pre_camera.push_back(make_pair(second,Camera::uv2camera(f,camera_k)));
@@ -928,8 +928,6 @@ cout<<".......................................................Begin pnp and tri.
     // TODO 融合相近的特征点
 
     //Feature::fuseSameFeature(features_f,init_l);
-
-
 
 
     for(int cam=0;cam<init_frame_flag+1;cam++)

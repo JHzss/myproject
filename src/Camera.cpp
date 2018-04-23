@@ -25,7 +25,7 @@ Point2d Camera::uv2camera(Point2f &point_uv_, Mat K_)//归一化平面上
     return point_cam;
 }
 
-Point2f Camera::removeDistort(Point2f &pre,double k1,double k2,double k3,double p1,double p2, Mat &k_)
+Point2f Camera::removeDistort(Point2f &pre,double k1,double k2,double p1,double p2, Mat &k_)
 {
     Point2d po,later;
     po=uv2camera(pre,k_);
@@ -35,7 +35,7 @@ Point2f Camera::removeDistort(Point2f &pre,double k1,double k2,double k3,double 
     y2 = po.y * po.y;
     xy = po.x * po.y;
     r2 = x2 + y2;
-    rad_dist = 1 + k1* r2 + k2 * r2 * r2 + k3* r2 * r2 * r2;
+    rad_dist = 1 + k1* r2 + k2 * r2 * r2;
     po.x=(float)(po.x * rad_dist +2 * p1 * xy + p2 * (r2+ 2 * x2));
     po.y=(float)(po.y * rad_dist +2 * p2 * xy + p1 * (r2+ 2 * x2));
 

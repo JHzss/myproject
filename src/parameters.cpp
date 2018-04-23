@@ -56,9 +56,13 @@ void LoadParameters(ros::NodeHandle &n)
 
     camera_k1=filename["camera.k1"];
     camera_k2=filename["camera.k2"];
-    camera_k3=filename["camera.k3"];
     camera_p1=filename["camera.p1"];
     camera_p2=filename["camera.p2"];
+
+    acc_n=filename["acc_n"];
+    acc_w=filename["acc_w"];
+    gyr_n=filename["gyr_n"];
+    gyr_w=filename["gyr_w"];
 
     number_of_features=filename["number_of_features"];
     init_dist=filename["init_dist"];

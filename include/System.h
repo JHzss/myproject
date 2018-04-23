@@ -17,6 +17,7 @@
 #include "parameters.h"
 #include "Read_dataset.h"
 #include "Initializer.h"
+#include "PreIntegration.h"
 
 
 
@@ -36,7 +37,8 @@ public:
         Track_fail
     } SystemStatus_;
 
-    void track();
+    void Imu_process(vector<sensor_msgs::ImuPtr> imus);
+    void track(pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement);
     void Imu_Visual_align();
 
     void slideWindow();                      //边缘化，控制变量
@@ -57,6 +59,12 @@ public:
     vector<Frame::Ptr> all_Frames_s;         //所有的帧
     vector<KeyFrame::Ptr> all_Keyframes_s;   //所有的关键帧
     vector<Mat> all_images_s;//所有的图片
+    PreIntegration::Ptr preIntegrations[(WINDOW_SIZE+1)]; //所有的预积分变量（还不确定是全部的还是本图像帧对应的）
+    Vector3d position[(WINDOW_SIZE+1)];
+    Vector3d velocity[(WINDOW_SIZE+1)];
+    Quaterniond rotate_q[(WINDOW_SIZE+1)];
+    Vector3d ba[(WINDOW_SIZE+1)];
+    Vector3d bg[(WINDOW_SIZE+1)];
 
 
     Feature_tracking::Ptr tracker_s;         //特征跟踪
@@ -64,6 +72,8 @@ public:
     Frame::Ptr currFrame_s;                  //当前帧
     Mat currImg_s;
     KeyFrame::Ptr refKeyFrame_s;             //当前参考帧
+
+    int frame_count;                        //frame 计数
 
 //    Read_dataset::Ptr dataset_s;             //数据集读取
 

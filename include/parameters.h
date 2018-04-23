@@ -10,6 +10,8 @@
 #include <fstream>
 #ifndef MYPROJECT_PARAMETERS_H
 #define MYPROJECT_PARAMETERS_H
+
+const int WINDOW_SIZE = 10;
 extern std::string IMAGE_TOPIC;
 extern std::string IMU_TOPIC;
 void LoadParameters(ros::NodeHandle &n);
@@ -21,12 +23,14 @@ extern double camera_cy;
 
 extern double camera_k1;
 extern double camera_k2;
-extern double camera_k3;
 extern double camera_p1;
 extern double camera_p2;
 
 extern cv::Mat camera_k;
 extern int number_of_features;
+
+extern double acc_n,acc_w;
+extern double gyr_n,gyr_w;
 
 extern int image_width;
 extern int image_height;

@@ -16,9 +16,10 @@
 #include <opencv2/core/eigen.hpp>
 
 using Eigen::Vector2d;
-using Eigen::Vector3d;
+using Eigen::Vector3d;::
 using Eigen::Matrix3d;
-
+using Eigen::Quaterniond;
+//有的sophus版本要改成.h
 #include <sophus/se3.hpp>
 #include <sophus/so3.hpp>
 using Sophus::SE3;
@@ -41,6 +42,8 @@ using Sophus::Quaterniond;
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/opencv.hpp>
 
+#include <ros/ros.h>
+#include <cv_bridge/cv_bridge.h>
 #include <std_msgs/Header.h>
 #include <std_msgs/Float32.h>
 #include <sensor_msgs/Imu.h>
