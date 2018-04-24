@@ -2,14 +2,17 @@
 // Created by jh on 18-3-8.
 //
 #pragma once
+
+#ifndef MYPROJECT_PARAMETERS_H
+#define MYPROJECT_PARAMETERS_H
+
 #include <ros/ros.h>
 #include <vector>
 #include <eigen3/Eigen/Dense>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <fstream>
-#ifndef MYPROJECT_PARAMETERS_H
-#define MYPROJECT_PARAMETERS_H
+#include "myheader.h"
 
 const int WINDOW_SIZE = 10;
 extern std::string IMAGE_TOPIC;

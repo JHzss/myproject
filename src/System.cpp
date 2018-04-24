@@ -21,7 +21,11 @@ void calcImu(sensor_msgs::ImuPtr imu)
 }
 void System::Imu_process(vector<sensor_msgs::ImuPtr> imus)
 {
-    imu_number=0;
+    int imu_number=0;
+    double first_t;
+    double last_time=-1;
+    sensor_msgs::ImuPtr first_imu;
+    Vector3d acc_0,acc_1,gyr_0,gyr_1;//前后两次IMU的测量值
     for(auto imu:imus)
     {
 //        calcImu(imu);
@@ -51,11 +55,8 @@ void System::Imu_process(vector<sensor_msgs::ImuPtr> imus)
             preIntegrations[frame_count]=PreIntegration::creat(acc_0,acc_1,gyr_0,gyr_1,ba[frame_count],bg[frame_count],dt);
         if(dt!=0)
         {
-
             //todo 开始对预积分进行操作
             preIntegrations[frame_count]->run();
-
-
             //todo 将IMU和图像对应上，需要定义frame_count,预积分
         }
         imu_number++;//表示这两张图像之间的IMU计数，begin对应imu-0
@@ -65,6 +66,7 @@ void System::Imu_process(vector<sensor_msgs::ImuPtr> imus)
 void System::track(pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement)
 {
     Imu_process(measurement.first);
+    frame_count++;
 //    cout<<"tracker_s->init_frame_count:"<<tracker_s->init_frame_count<<endl;
 //    pair<vector<sensor_msgs::ImuConstPtr>,sensor_msgs::ImageConstPtr> measurement;
 //
@@ -108,7 +110,6 @@ void System::track(pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measu
 //    {
 //        SystemStatus_=Init;//todo 想想跟踪失败后应该如何做
 //    }
-
 }
 
 

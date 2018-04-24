@@ -67,5 +67,7 @@ add_executable(myslam_node
         src/Initializer.cpp
         src/Map.cpp
         src/Optimizer.cpp
-        src/Publishers.cpp src/imu_process.cpp)
+        src/Publishers.cpp
+        src/imu_process.cpp
+        src/PreIntegration.cpp)
 target_link_libraries(myslam_node ${THIRD_PARTY_LIBS})

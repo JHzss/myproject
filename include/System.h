@@ -81,6 +81,7 @@ public:
     list<Vector3d> pose_frames_s;
     list<Vector3d> pose_keyframes_s;
 
+
     //todo 定义 slideWindow中的变量
 };
 

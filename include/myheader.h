@@ -11,13 +11,15 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
+#include <Eigen/Dense>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <opencv2/core/eigen.hpp>
 
 using Eigen::Vector2d;
-using Eigen::Vector3d;::
+using Eigen::Vector3d;
 using Eigen::Matrix3d;
+using Eigen::MatrixXd;
 using Eigen::Quaterniond;
 //有的sophus版本要改成.h
 #include <sophus/se3.hpp>
@@ -55,6 +57,10 @@ using Sophus::Quaterniond;
 #include <geometry_msgs/PointStamped.h>
 #include <visualization_msgs/Marker.h>
 #include <tf/transform_broadcaster.h>
+
+#include <ceres/ceres.h>
+
+
 using namespace std;
 using namespace cv;
 #endif //MYPROJECT_MYHEADER_H

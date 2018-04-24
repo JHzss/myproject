@@ -18,9 +18,9 @@ public:
     void run();
     void clearState();
 
-    Matrix<double, 18,18 > jacobian,covariance;
+    Eigen::Matrix<double, 15,15 > jacobian,covariance;
     Eigen::Vector3d ba_pre, bg_pre;
-    Matrix<double,18,18> noise;
+    Eigen::Matrix<double,18,18> noise;
 
     double dt,sum_t;
     vector<double > dt_buf;

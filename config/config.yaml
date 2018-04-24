@@ -2,8 +2,10 @@
 # data
 # the tum dataset directory, change it to yours! 
 dataset_dir: /home/jh/data-orb/data/rgbd_dataset_freiburg1_desk
-imu_topic: /imu/data
-image_topic: /camera/image_raw
+#imu_topic: /imu/data
+#image_topic: /camera/image_raw
+imu_topic: /imu0
+image_topic: /cam0/image_raw
 
 # camera intrinsics
 # fr1

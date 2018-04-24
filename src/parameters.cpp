@@ -12,9 +12,13 @@ double camera_cx;
 double camera_cy;
 double camera_k1;
 double camera_k2;
-double camera_k3;
 double camera_p1;
 double camera_p2;
+double acc_n;
+double acc_w;
+double gyr_n;
+double gyr_w;
+
 int number_of_features,image_width,image_height,slideWindowsize;
 float init_dist;
 cv::Mat camera_k;
