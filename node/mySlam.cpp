@@ -18,8 +18,13 @@ int imu=0,image=0;
 queue<sensor_msgs::ImuPtr> imu_buf;
 queue<sensor_msgs::ImagePtr> image_buf;
 sensor_msgs::ImagePtr first_image;
+sensor_msgs::ImuPtr imu_begin,imu_end;
+sensor_msgs::ImuPtr imu0,imu1,imu2,imu3,imu4,imu5,imu6,imu7;
 ros::Time image_first_time,image_second_time;
 vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> measurements;
+fstream imustxt("/home/jh/catkin_ws/src/myproject/imus.txt", ios::out);
+
+
 
 //Hermite插值 数值分析P154
 double Hermite(uint64_t stamp_,uint64_t stamp10, double a0,uint64_t stamp11, double a1,uint64_t stamp12, double a2,uint64_t stamp13, double a3)
@@ -28,9 +33,9 @@ double Hermite(uint64_t stamp_,uint64_t stamp10, double a0,uint64_t stamp11, dou
         return a1;
     if(stamp_==stamp12)
         return a2;
-    long double stamp,stamp0,stamp1,stamp2,stamp3;
-    long double k01,k12,k23,k1,k2;
-    long double result,result1,result2,result3,result4;
+    double stamp,stamp0,stamp1,stamp2,stamp3;
+    double k01,k12,k23,k1,k2;
+    double result,result1,result2,result3,result4;
 
     stamp=((double)stamp_/1000000000.0);
     stamp0=((double)stamp10/1000000000.0);
@@ -42,12 +47,12 @@ double Hermite(uint64_t stamp_,uint64_t stamp10, double a0,uint64_t stamp11, dou
     k23=(a3-a2)/(stamp3-stamp2);
     k1=(k01+k12)/2;
     k2=(k12+k23)/2;
-
     result1=(1-2*((stamp-stamp1)/(stamp1-stamp2)))*((stamp-stamp2)/(stamp1-stamp2))*((stamp-stamp2)/(stamp1-stamp2))*a1;
     result2=(1-2*((stamp-stamp2)/(stamp2-stamp1)))*((stamp-stamp1)/(stamp2-stamp1))*((stamp-stamp1)/(stamp2-stamp1))*a2;
     result3=(stamp-stamp1)*((stamp-stamp2)/(stamp1-stamp2))*((stamp-stamp2)/(stamp1-stamp2))*k1;
     result4=(stamp-stamp2)*((stamp-stamp1)/(stamp2-stamp1))*((stamp-stamp1)/(stamp2-stamp1))*k2;
     result=result1+result2+result3+result4;
+    cout<<"hermite result:"<<result<<endl;
     return result;
 }
 /* 牛顿差值
@@ -112,7 +117,7 @@ double Newton(uint64_t stamp_,uint64_t stamp10, double a0,uint64_t stamp11, doub
     return N3;
 }
  */
-sensor_msgs::ImuPtr HermiteImu(sensor_msgs::ImuPtr &imu0,sensor_msgs::ImuPtr &imu1,sensor_msgs::ImuPtr &imu2,sensor_msgs::ImuPtr &imu3,ros::Time image_time)
+sensor_msgs::ImuPtr HermiteImu(sensor_msgs::ImuPtr imu0,sensor_msgs::ImuPtr imu1,sensor_msgs::ImuPtr imu2,sensor_msgs::ImuPtr imu3,ros::Time image_time)
 {
 /*
     cout<<"input:"<<endl;
@@ -121,7 +126,7 @@ sensor_msgs::ImuPtr HermiteImu(sensor_msgs::ImuPtr &imu0,sensor_msgs::ImuPtr &im
     cout<<"imu2 "<<"stamp: "<<imu2->header.stamp<<endl<<"acc:"<<endl<<imu2->linear_acceleration<<endl<<"gyr:"<<endl<<imu2->angular_velocity<<endl;
     cout<<"imu3 "<<"stamp: "<<imu3->header.stamp<<endl<<"acc:"<<endl<<imu3->linear_acceleration<<endl<<"gyr:"<<endl<<imu3->angular_velocity<<endl;
     */
-    sensor_msgs::ImuPtr imu= imu0;
+    sensor_msgs::ImuPtr imu(new sensor_msgs::Imu(*imu0));
     uint64_t stamp;
 
     double ax,ay,az;
@@ -156,11 +161,8 @@ vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
         pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement;
         vector<sensor_msgs::ImuPtr> imus;
         sensor_msgs::ImagePtr img;
-        sensor_msgs::ImuPtr imu0,imu1,imu2,imu3,imu4,imu5,imu6,imu7;
-        sensor_msgs::ImuPtr imu_begin,imu_end;
-        Vector3d acc_begin,acc_end;
-        Vector3d gyr_begin,gyr_end;
         //image信息或IMU信息太少,设置成50保证image对应足够的imu
+        imus.clear();
         if((image_buf.size()<3)||imu_buf.size()<20)
         {
             return measurements;
@@ -184,7 +186,6 @@ vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
                 image++;//判断这是第几帧（系统的首帧作为第0帧）
             }
         }
-
         //表示进入连续跟踪模式
         if(image>0)
         {
@@ -209,7 +210,7 @@ vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
             if(image!=1)
             {
                 image_first_time=image_second_time;//在连续运行的时候保证first time是上一次的second time
-                imu_begin=imu_end;
+                imu_begin=imu_end;//todo 赋值有问题
                 imus.emplace_back(imu_begin);
                 imus.emplace_back(imu6);
             }
@@ -231,16 +232,17 @@ vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
                 if(imu5!= nullptr)
                     imu4=imu5;
                 imu5=imu_buf.front();
-
                 imu_buf.pop();
             }
+
+
             if(imu4== nullptr) //保证imu4不为空
             {
                 ROS_INFO("set imu4 , maybe wrong");
                 imu4=imu5;
             }
             imu_end=imu5;  //对imu_end赋初值
-            imus.emplace_back(imu_end);
+            //todo imu和图像之间额顺序混的话需要给出错误提示
             //添加imus结束
             imu6=imu_buf.front();
             imu_buf.pop();
@@ -248,10 +250,15 @@ vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
             if(image==1)
             {
                 imu_begin=HermiteImu(imu0,imu1,imu2,imu3,image_first_time);
+                imus.front()=imu_begin;
                 imu_end=HermiteImu(imu4,imu5,imu6,imu7,image_second_time);
+                imus.emplace_back(imu_end);
             }
             else
+            {
                 imu_end=HermiteImu(imu4,imu5,imu6,imu7,image_second_time);
+                imus.emplace_back(imu_end);
+            }
             measurement=(make_pair(imus,image_buf.front()));
             measurements.push_back(measurement);
             image_buf.pop();//这个必须要有
@@ -265,7 +272,6 @@ vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
             */
             image++;
         }
-
     }
 }
 System::Ptr System=System::creat();
@@ -316,9 +322,13 @@ void process()
         cout<<"measurement: "<<measurements.size()<<endl;
         for(auto &measure:measurements)
         {
+            for(auto imu_:measure.first)
+            {
+                imustxt<<imu_->header.stamp<<" "<<imu_->linear_acceleration.x<<" "<<imu_->linear_acceleration.y<<" "<<imu_->linear_acceleration.z<<endl;
+            }
 
+            imustxt<<endl;
             System->track(measure);
-
             Optimize();
         }
 

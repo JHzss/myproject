@@ -5,8 +5,11 @@
 #include "System.h"
 #include "imu_process.h"
 
+fstream pre_imu_txt("/home/jh/catkin_ws/src/myproject/pre_imu.txt", ios::out);
+
 System::System():SystemStatus_(Init),currFrame_s(nullptr),refKeyFrame_s(nullptr),init_flag_s(false),load_init_flag_s(false)
 {
+    frame_count=0;
     tracker_s=Feature_tracking::creat(image_width,image_height);         //特征跟踪
 }
 /**
@@ -15,20 +18,18 @@ System::System():SystemStatus_(Init),currFrame_s(nullptr),refKeyFrame_s(nullptr)
  * （2）预积分（中值积分），更新J矩阵和P矩阵
  * （3）更新变量
  */
-void calcImu(sensor_msgs::ImuPtr imu)
-{
 
-}
 void System::Imu_process(vector<sensor_msgs::ImuPtr> imus)
 {
     int imu_number=0;
-    double first_t;
     double last_time=-1;
     sensor_msgs::ImuPtr first_imu;
-    Vector3d acc_0,acc_1,gyr_0,gyr_1;//前后两次IMU的测量值
+    Vector3d acc_1,gyr_1;//前后两次IMU的测量值
+    Vector3d acc_0(0.0,0.0,0.0);
+    Vector3d gyr_0(0.0,0.0,0.0);
+
     for(auto imu:imus)
     {
-//        calcImu(imu);
         //todo 需要检查一下这里定义成double结果对不对
         double t=imu->header.stamp.toSec();
         if(last_time<0)
@@ -38,33 +39,51 @@ void System::Imu_process(vector<sensor_msgs::ImuPtr> imus)
 
         double ba_temp[]{0.0,0.0,0.0};
         double bg_temp[]{0.0,0.0,0.0};
-        double ax=imu->linear_acceleration.x-ba_temp[0];
+        double ax=imu->linear_acceleration.x-ba_temp[0];//todo 这里重传播的时候还需要检查一遍
         double ay=imu->linear_acceleration.y-ba_temp[1];
         double az=imu->linear_acceleration.z-ba_temp[2];
         double gx=imu->angular_velocity.x-bg_temp[0];
         double gy=imu->angular_velocity.y-bg_temp[1];
         double gz=imu->angular_velocity.z-bg_temp[2];
         //这里逻辑应该是正确的
-        acc_0=acc_1;//上次的IMU数据
-        gyr_0=gyr_1;
-        acc_1=Vector3d(ax,ay,az);//本次IMU数据组成
-        gyr_1=Vector3d(gx,gy,gz);
+
         //frame_count 应该是本次的
         //todo 这个判断方法原理是什么
-        if(!preIntegrations[frame_count])
-            preIntegrations[frame_count]=PreIntegration::creat(acc_0,acc_1,gyr_0,gyr_1,ba[frame_count],bg[frame_count],dt);
-        if(dt!=0)
+        cout<<"if exist?"<<endl;
+        if(imu_number==0)
         {
+            cout<<"init preintegration"<<endl;
+            PreIntegration::Ptr pre_integration_tmp=PreIntegration::creat(acc_0,acc_1,gyr_0,gyr_1,ba[frame_count],bg[frame_count],dt);
+            preIntegrations.emplace_back(pre_integration_tmp);
+//            preIntegrations[frame_count]=PreIntegration::creat(acc_0,acc_1,gyr_0,gyr_1,ba[frame_count],bg[frame_count],dt);
+            preIntegrations[frame_count]->acc_1=Vector3d(ax,ay,az);//本次IMU数据组成
+            preIntegrations[frame_count]->gyr_1=Vector3d(gx,gy,gz);
+        }
+        if(imu_number!=0)
+        {
+            preIntegrations[frame_count]->dt=dt;
+            preIntegrations[frame_count]->acc_0=preIntegrations[frame_count]->acc_1;
+            preIntegrations[frame_count]->gyr_0=preIntegrations[frame_count]->gyr_1;
+            preIntegrations[frame_count]->acc_1=Vector3d(ax,ay,az);
+            preIntegrations[frame_count]->gyr_1=Vector3d(gx,gy,gz);
             //todo 开始对预积分进行操作
+            cout<<"run preintegration"<<endl;
             preIntegrations[frame_count]->run();
             //todo 将IMU和图像对应上，需要定义frame_count,预积分
         }
         imu_number++;//表示这两张图像之间的IMU计数，begin对应imu-0
     }
+    preIntegrations[frame_count]->img_stamp=imus.back()->header.stamp.toSec();
+    pre_imu_txt<<fixed;
+    pre_imu_txt<<preIntegrations[frame_count]->img_stamp<<endl;
+    pre_imu_txt<<"dp: "<<preIntegrations[frame_count]->dp(0)<<" "<<preIntegrations[frame_count]->dp(1)<<" "<<preIntegrations[frame_count]->dp(2)<<endl;
+    pre_imu_txt<<"dv: "<<preIntegrations[frame_count]->dv(0)<<" "<<preIntegrations[frame_count]->dv(1)<<" "<<preIntegrations[frame_count]->dv(2)<<endl;
+    pre_imu_txt<<"dq: "<<preIntegrations[frame_count]->dq.w()<<" "<<preIntegrations[frame_count]->dq.x()<<" "<<preIntegrations[frame_count]->dq.y()<<" "<<preIntegrations[frame_count]->dq.z()<<endl;
 }
 
 void System::track(pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement)
 {
+    cout<<"--------frame count--------------------------------------------------"<<frame_count<<endl;
     Imu_process(measurement.first);
     frame_count++;
 //    cout<<"tracker_s->init_frame_count:"<<tracker_s->init_frame_count<<endl;

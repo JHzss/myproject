@@ -59,7 +59,8 @@ public:
     vector<Frame::Ptr> all_Frames_s;         //所有的帧
     vector<KeyFrame::Ptr> all_Keyframes_s;   //所有的关键帧
     vector<Mat> all_images_s;//所有的图片
-    PreIntegration::Ptr preIntegrations[(WINDOW_SIZE+1)]; //所有的预积分变量（还不确定是全部的还是本图像帧对应的）
+    vector<PreIntegration::Ptr> preIntegrations; //所有的预积分变量（还不确定是全部的还是本图像帧对应的）
+//    PreIntegration::Ptr preIntegrations[200];
     Vector3d position[(WINDOW_SIZE+1)];
     Vector3d velocity[(WINDOW_SIZE+1)];
     Quaterniond rotate_q[(WINDOW_SIZE+1)];

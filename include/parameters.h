@@ -14,7 +14,7 @@
 #include <fstream>
 #include "myheader.h"
 
-const int WINDOW_SIZE = 10;
+const int WINDOW_SIZE = 50;
 extern std::string IMAGE_TOPIC;
 extern std::string IMU_TOPIC;
 void LoadParameters(ros::NodeHandle &n);

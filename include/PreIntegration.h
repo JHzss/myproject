@@ -32,6 +32,7 @@ public:
     Vector3d dp;
     Vector3d dv;
     Quaterniond dq;
+    double img_stamp;//这一组imu得到的预积分对应的图像的stamp
 
 };
 #endif //MYPROJECT_PREINTEGRATION_H

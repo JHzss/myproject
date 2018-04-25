@@ -39,6 +39,10 @@ void PreIntegration::run()
     dt_buf.push_back(dt);
     acc_buf.push_back(acc_1);
     gyr_buf.push_back(gyr_1);
+    cout<<"acc_0:"<<endl<<acc_0<<endl;
+    cout<<"acc_1:"<<endl<<acc_1<<endl;
+    cout<<"gyr_0:"<<endl<<gyr_0<<endl;
+    cout<<"gyr_1:"<<endl<<gyr_1<<endl;
 
     Vector3d acc_0_nb=dq.toRotationMatrix()*(acc_0 - ba_pre);
     Vector3d gyr_aver=0.5*(gyr_0+gyr_1)-bg_pre;
