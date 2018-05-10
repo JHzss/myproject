@@ -18,6 +18,9 @@ double acc_n;
 double acc_w;
 double gyr_n;
 double gyr_w;
+cv::Mat Rc2b,tc2b;//Rotation from camera frame to imu frame
+Eigen::Matrix3d eigen_Rc2b;
+Eigen::Vector3d eigen_tc2b;
 
 int number_of_features,image_width,image_height,slideWindowsize;
 float init_dist;
@@ -51,8 +54,14 @@ void LoadParameters(ros::NodeHandle &n)
     {
         cout<<"load config file successfully"<<endl;
     }
-    filename["imu_topic"]>>IMU_TOPIC;
-    filename["image_topic"]>>IMAGE_TOPIC;
+    filename["imu_topic"]>> IMU_TOPIC;
+    filename["image_topic"]>> IMAGE_TOPIC;
+    filename["extrinsicRotation"]>> Rc2b;
+    filename["extrinsicTranslation"]>> tc2b;
+
+    cv2eigen(Rc2b,eigen_Rc2b);
+    cv2eigen(tc2b,eigen_tc2b);
+
     camera_fx=filename["camera.fx"];
     camera_fy=filename["camera.fy"];
     camera_cx=filename["camera.cx"];
@@ -70,6 +79,8 @@ void LoadParameters(ros::NodeHandle &n)
 
     number_of_features=filename["number_of_features"];
     init_dist=filename["init_dist"];
+
+
 
     image_width=filename["image.width"];
     image_height=filename["image.height"];

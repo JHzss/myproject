@@ -13,10 +13,7 @@ Frame::Frame(const Mat &img, const double& timeStamps) :timestamps_(timeStamps),
 
 void Frame::setPose(const SE3 &pose)
 {
-    this->T_w2c=pose;
-    this->T_c2w=pose.inverse();
-    this->R_=pose.rotationMatrix();
-    this->t_=pose.translation();
+
 }
 
 int Frame::getFeatureNumber()

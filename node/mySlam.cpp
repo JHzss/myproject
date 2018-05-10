@@ -16,15 +16,14 @@ mutex image_lock;
 
 int imu=0,image=0;
 queue<sensor_msgs::ImuPtr> imu_buf;
-queue<sensor_msgs::ImagePtr> image_buf;
-sensor_msgs::ImagePtr first_image;
+queue<sensor_msgs::ImageConstPtr> image_buf;
+sensor_msgs::ImageConstPtr first_image;
 sensor_msgs::ImuPtr imu_begin,imu_end;
 sensor_msgs::ImuPtr imu0,imu1,imu2,imu3,imu4,imu5,imu6,imu7;
 ros::Time image_first_time,image_second_time;
-vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> measurements;
+vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImageConstPtr>> measurements;
 fstream imustxt("/home/jh/catkin_ws/src/myproject/imus.txt", ios::out);
-
-
+System::Ptr System=System::creat();
 
 //Hermite插值 数值分析P154
 double Hermite(uint64_t stamp_,uint64_t stamp10, double a0,uint64_t stamp11, double a1,uint64_t stamp12, double a2,uint64_t stamp13, double a3)
@@ -151,16 +150,16 @@ sensor_msgs::ImuPtr HermiteImu(sensor_msgs::ImuPtr imu0,sensor_msgs::ImuPtr imu1
     return imu;
 }
 
-vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
+vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImageConstPtr>> getMeasurement()
 {
     cout<<image_buf.size()<<"     "<<imu_buf.size()<<endl;
     //注意这里为什么把measurements定义在while循环的外面，因为getMeasurement()一直循环进行，而且要得到measurements，定义在里面会导致清空
-    vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> measurements;
+    vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImageConstPtr>> measurements;
     while (true)
     {
-        pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement;
+        pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImageConstPtr> measurement;
         vector<sensor_msgs::ImuPtr> imus;
-        sensor_msgs::ImagePtr img;
+        sensor_msgs::ImageConstPtr img;
         //image信息或IMU信息太少,设置成50保证image对应足够的imu
         imus.clear();
         if((image_buf.size()<3)||imu_buf.size()<20)
@@ -274,7 +273,7 @@ vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> getMeasurement()
         }
     }
 }
-System::Ptr System=System::creat();
+
 
 /**
  * @brief 处理图像数据
@@ -282,7 +281,7 @@ System::Ptr System=System::creat();
  * （2）计算位姿
  * （3）三角化恢复特征点
  */
-void Image_process(sensor_msgs::ImagePtr image)
+void Image_process(sensor_msgs::ImageConstPtr image)
 {
 
 }
@@ -310,8 +309,8 @@ void process()
 {
     while(true)
     {
-        vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr>> measurements;
-        pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement;
+        vector<pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImageConstPtr>> measurements;
+        pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImageConstPtr> measurement;
 
         unique_lock<mutex> lk(load_lock);
         con.wait(lk,[&]
@@ -326,7 +325,6 @@ void process()
             {
                 imustxt<<imu_->header.stamp<<" "<<imu_->linear_acceleration.x<<" "<<imu_->linear_acceleration.y<<" "<<imu_->linear_acceleration.z<<endl;
             }
-
             imustxt<<endl;
             System->track(measure);
             Optimize();
@@ -342,7 +340,7 @@ void imu_callback(const sensor_msgs::ImuPtr &imu_msg)
     load_lock.unlock();
 
 }
-void image_callback(const sensor_msgs::ImagePtr &img_msg)
+void image_callback(const sensor_msgs::ImageConstPtr &img_msg)
 {
     load_lock.lock();
     image_buf.push(img_msg);

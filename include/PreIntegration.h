@@ -16,6 +16,7 @@ public:
         {return PreIntegration::Ptr(new PreIntegration(acc_0,acc_1,gyr_0,gyr_1,ba,bg,dt));};
 
     void run();
+    void rerun();
     void clearState();
 
     Eigen::Matrix<double, 15,15 > jacobian,covariance;
@@ -25,13 +26,14 @@ public:
     double dt,sum_t;
     vector<double > dt_buf;
     Eigen::Vector3d acc_0, gyr_0;
+    Eigen::Vector3d acc_first, gyr_first;
     Eigen::Vector3d acc_1, gyr_1;
     vector<Vector3d > acc_buf;
     vector<Vector3d > gyr_buf;
 
     Vector3d dp;
     Vector3d dv;
-    Quaterniond dq;
+    Eigen::Quaterniond dq;
     double img_stamp;//这一组imu得到的预积分对应的图像的stamp
 
 };

@@ -143,7 +143,7 @@ int main(int argc,char** argv)
         cout<<"points-- size:"<<points1__.size()<<endl;
         for(auto iter2=points2__.begin();iter2!=points2__.end();)
         {
-            iter2->x+=640;
+            iter2->x+=image_width;
             iter2++;
         }
         cv::RNG rng(time(0));

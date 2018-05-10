@@ -3,33 +3,39 @@
 //
 
 #include "Feature.h"
+#include "parameters.h"
 uint64_t Feature::next_id_=0;
-Feature::Feature(Point2f &p) :quality_feature(normal),track_times_(0),if3D(false),id_(next_id_++)
+Feature::Feature() :quality_feature(normal),track_times_(0),if3D(false),id_(next_id_++)
 {
     cout<<"creat feature"<<id_<<endl;
 //this->pose_world_=Point3d(0,0,-1);
-
 }
+/**
+ *
+ * @param features 系统所有的特征点
+ * @param pre_points_ids points的id
+ * @param frame_id  本帧的id
+ * @param point 本帧中的特征点
+ * @param k 相机内参矩阵
+ */
 void Feature::addTrack(vector<Feature::Ptr>& features,vector<uint64_t> &pre_points_ids, uint64_t frame_id, vector<Point2f> &point,Mat& k)
 {
     int it=0;
     for(uint64_t num:pre_points_ids)
     {
-        if(!features[num]->TrackBy(frame_id))
-        {
-            features[num]->point_pre_frame.push_back(make_pair(frame_id,point[it]));
-            features[num]->point_pre_camera.push_back(make_pair(frame_id,Camera::uv2camera(point[it],k)));
-            features[num]->track_times_++;
-        }
+        Point2f point_nodistort;
+        point_nodistort=Camera::removeDistort(point[it],camera_k1,camera_k2,camera_p1,camera_p2,k);
+        features[num]->addTrack(frame_id,point[it],point_nodistort);
         it++;
     }
 }
 
-
-void Feature::addTrack(uint64_t frame_id, Point2f &point)
+void Feature::addTrack(uint64_t frame_id, Point2f &point,Point2f &point_nodistort)
 {
-    this->point_pre_frame.push_back(make_pair(frame_id,point));
-    this->track_times_++;
+    point_pre_frame_nodistort.push_back(make_pair(frame_id,point_nodistort));
+    point_pre_camera.push_back(make_pair(frame_id,Camera::uv2camera(point_nodistort,camera_k)));//去畸变之后的相机平面下的坐标
+    point_pre_frame.push_back(make_pair(frame_id,point));
+    track_times_++;
 }
 bool Feature::TrackBy(uint64_t &frame_id)
 {
@@ -40,9 +46,9 @@ bool Feature::TrackBy(uint64_t &frame_id)
     }
     return false;
 }
-Point2f Feature::pointIn(uint64_t &frame_id)
+Point2f Feature::pointIn_nodistort(uint64_t &frame_id)
 {
-    for(auto tr:this->point_pre_frame)
+    for(auto tr:this->point_pre_frame_nodistort)
     {
         if(tr.first==frame_id)
             return tr.second;
@@ -52,6 +58,14 @@ Point2f Feature::pointIn(uint64_t &frame_id)
 Point2f Feature::pointIncamera(uint64_t &frame_id)
 {
     for(auto tr:this->point_pre_camera)
+    {
+        if(tr.first==frame_id)
+            return tr.second;
+    }
+}
+Point2f Feature::pointIn_raw(uint64_t &frame_id)
+{
+    for(auto tr:this->point_pre_frame)
     {
         if(tr.first==frame_id)
             return tr.second;
@@ -103,7 +117,7 @@ void Feature::fuseSameFeature(vector<Feature::Ptr> &features,uint64_t l)
         {
             if(f->TrackBy(i))//找到第i帧中所有的特征点
             {
-                pairs.push_back(make_pair(f->id_,f->pointIn(i)));
+                pairs.push_back(make_pair(f->id_,f->pointIn_nodistort(i)));
 //                features_tmp.push_back(f);
             }
         }

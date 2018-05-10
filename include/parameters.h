@@ -39,5 +39,17 @@ extern int image_width;
 extern int image_height;
 extern int slideWindowsize;
 extern float init_dist;
+extern cv::Mat Rc2b,tc2b;//Rotation from camera frame to imu frame
+extern Eigen::Matrix3d eigen_Rc2b;
+extern Eigen::Vector3d eigen_tc2b;
+enum StateOrder
+{
+    O_P = 0,
+    O_R = 3,
+    O_V = 6,
+    O_BA = 9,
+    O_BG = 12
+};
+
 
 #endif //MYPROJECT_PARAMETERS_H

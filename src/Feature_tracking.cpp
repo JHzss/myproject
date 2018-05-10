@@ -3,11 +3,17 @@
 //
 
 #include "Feature_tracking.h"
+#include "parameters.h"
 //#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/opencv.hpp>
 
+Feature_tracking::Feature_tracking(int width, int height)
+        :width_(width),height_(height),init_frame_count(-1),aver_k(0),aver_k_raw(0),min_init_dist(init_dist),dist(0.0)
+{
+
+}
 
 vector<Point3d> normalization(const Mat& points_position_)
 {
@@ -34,7 +40,7 @@ Mat showMatch(const Mat& img1,const Mat& img2,const vector<Point2f>& points1,con
     points2_copy.assign(points2.begin(),points2.end());
     for(auto iter2=points2_copy.begin();iter2!=points2_copy.end();)
     {
-        iter2->x+=640;
+        iter2->x+=image_width;
         iter2++;
     }
     cv::RNG rng(time(0));
@@ -139,99 +145,76 @@ void Feature_tracking::reduceVector(vector<Point2f> &points1, vector<Point2f> &p
     }
     points1.resize(points2.size());
 }
-
+/**
+ * @brief 通过点和id添加特征
+ * @param point 图像坐标点，未经过畸变矫正
+ * @param frame_id 图像id
+ */
 
 void Feature_tracking::addFeature(Point2f &point, uint64_t& frame_id)
 {
-    Feature::Ptr feature=Feature::creat(point);
-    feature->addTrack(frame_id,point);
-    feature->point_pre_camera.push_back(make_pair(frame_id,Camera::uv2camera(point,camera_k)));
-
-
+    Point2f point_nodistort;
+    //removeDistort:先投影到归一化平面，再进行畸变校正，再反投影回图像平面
+    point_nodistort=Camera::removeDistort(point,camera_k1,camera_k2,camera_p1,camera_p2,camera_k);
+    if((point_nodistort.x<5)||(point_nodistort.y<5)||(point_nodistort.x>(cur_img_f.cols-5))||(point_nodistort.y>(cur_img_f.rows-5)))
+    {
+        return;
+    }
+//    initFeatures_f[init_frame_count].push_back(f_nodistort); 暂时注释
+    Feature::Ptr feature=Feature::creat();
+    feature->addTrack(frame_id,point,point_nodistort);
     features_f.push_back(feature);
 }
 
 void Feature_tracking::solveCamPoseByPnP(int first,int second)//todo 用到了三角化的函数
 {
-    vector<Point2f> pre_points_f_copy,cur_points_f_copy;
+
     vector<Point2f> pre_points_f_copy_3d,cur_points_f_copy_3d;
-    vector<Point3d> pre_points_norm_copy;
+    vector<Point3d> pre_points_pose;
     vector<Point3f> pre_points_norm_copy_f;
     vector<uint64_t > pre_points_id_copy;
     vector<uint64_t > pre_points_id_copy_3d;
-    pre_points_f_copy.clear();
-    cur_points_f_copy.clear();
-    pre_points_norm_copy.clear();
-    pre_points_id_copy.clear();
-    for(auto point:features_f)
-    {
-        for(int it=0;it<point->point_pre_frame.size();it++)
-        {
-            if(point->point_pre_frame[it].first==first)
-            {
-                pre_points_f_copy.push_back(point->point_pre_frame[it].second);
-                pre_points_id_copy.push_back(point->id_);
-            }
-        }
 
-    }
-
-    Mat D,rvec_r;
+    Mat D,rvec_rodrigues;
     Mat rvec,tvec;
     Matrix3d rvec_eigen;
     Vector3d tvec_eigen;
     Mat inliers;
     cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
-    vector<uchar > status_solve;
-    vector<float > errors_solve;
-    rvec_eigen=init_Qs[second-1].toRotationMatrix();
-    tvec_eigen=init_ts[second-1]; //为了对称，其实没必要
+
+    rvec_eigen=Q_s[second-1].toRotationMatrix();
+    tvec_eigen=P_s[second-1]; //为了对称，其实没必要
     eigen2cv(rvec_eigen,rvec);
     eigen2cv(tvec_eigen,tvec);
-    Rodrigues(rvec,rvec_r);
+    Rodrigues(rvec,rvec_rodrigues);
 
-    calcOpticalFlowPyrLK(initImg_f[first],initImg_f[second],pre_points_f_copy,cur_points_f_copy,status_solve,errors_solve,Size(21, 21), 3);
-    reduceVector(pre_points_id_copy,pre_points_f_copy,cur_points_f_copy,status_solve);
-//    reduceVector(pre_points_norm_copy,status_solve);
-    //剔除空的向量
-    point_filter(pre_points_id_copy,pre_points_f_copy,cur_points_f_copy);
-
-    Feature::addTrack(features_f,pre_points_id_copy,second,cur_points_f_copy,camera_k);
-
-    int num=0;
-    for(auto id:pre_points_id_copy)
+    uint64_t second_u=second;
+    vector<Point2f> cur_points;
+    for(auto feature:features_f)
     {
-        if(features_f[id]->if3D)
+        if(feature->if3D&&feature->TrackBy(second_u))
         {
-            pre_points_f_copy_3d.push_back(features_f[id]->point_pre_frame[first].second);
-            pre_points_norm_copy.push_back(features_f[id]->pose_world_);
-            pre_points_id_copy_3d.push_back(id);
-            cur_points_f_copy_3d.push_back(cur_points_f_copy[num]);
+            pre_points_pose.push_back(feature->pose_world_);
+            cur_points.push_back(feature->point_pre_frame_nodistort[second_u].second);
         }
-        num++;
     }
-
-//    for(auto po:pre_points_norm_copy)
-//        pre_points_norm_copy_f.push_back(static_cast<Point3f>(po));
-
-    solvePnPRansac(pre_points_norm_copy,cur_points_f_copy_3d,camera_k,D,rvec_r,tvec, true,100,5.0,0.99,inliers);
+    cout<<"3D点个数:"<<pre_points_pose.size()<<endl;
+    solvePnPRansac(pre_points_pose,cur_points,camera_k,D,rvec_rodrigues,tvec, true,100,5.0,0.99,inliers);
 
     cout<<"solvePnPRansac内点个数:"<<inliers.rows<<endl;
 
-    Rodrigues(rvec_r,rvec);
+    Rodrigues(rvec_rodrigues,rvec);
     cv2eigen(rvec,rvec_eigen);
     cv2eigen(tvec,tvec_eigen);
-    init_Qs[second]=Eigen::Quaterniond(rvec_eigen);
-    init_ts[second]=tvec_eigen;
+    Q_s[second]=Eigen::Quaterniond(rvec_eigen);
+    P_s[second]=tvec_eigen;
 
 //    Mat img_show6;
-//    img_show6=showMatch(initImg_f[first],initImg_f[second],pre_points_f_copy,cur_points_f_copy);
+//    img_show6=showMatch(allImg_f[first],allImg_f[second],pre_points_f_copy,cur_points_f_copy);
 //    imshow("solvePNP",img_show6);
     cout<<"solved:"<<second<<"th camera pose"<<endl;
     cout<<"R"<<rvec<<endl;
     cout<<"t"<<tvec<<endl;
-    solvePointsByTri(first,second,pre_points_id_copy,pre_points_f_copy,cur_points_f_copy);
-
 }
 
 void Feature_tracking::solvePointsByTri(int first, int second,vector<uint64_t >& pre_points_id_copy, vector<Point2f>& pre_points_f_copy,vector<Point2f>& cur_points_f_copy) //
@@ -240,36 +223,23 @@ void Feature_tracking::solvePointsByTri(int first, int second,vector<uint64_t >&
     vector<Point3d> points_position_norm;
     vector<Point2f> pre_points_camera_copy,cur_points_camera_copy;
     vector<uint64_t > points_ids;
-    ///仅三角化给定id的特征点
-//    for(auto id:pre_points_id_copy)
-//    {
-//        uint64_t first_u=first;
-//        uint64_t second_u=second;
-//        pre_points_camera_copy.push_back(features_f[id]->pointIncamera(first_u));
-//        cur_points_camera_copy.push_back(features_f[id]->pointIncamera(second_u));
-//    }
-    ///三角化两帧之中所有的特征点
-    for(auto f:features_f)
+
+    uint64_t first_u=first;
+    uint64_t second_u=second;
+    points_ids.assign(pre_points_id_copy.begin(),pre_points_id_copy.end());
+    for(auto id:points_ids)
     {
-        uint64_t first_u=first;
-        uint64_t second_u=second;
-        if(f->TrackBy(first_u)&&f->TrackBy(second_u))
-        {
-            points_ids.push_back(f->id_);
-            pre_points_camera_copy.push_back(f->pointIncamera(first_u));
-            cur_points_camera_copy.push_back(f->pointIncamera(second_u));
-        }
-
+        pre_points_camera_copy.push_back(features_f[id]->pointIncamera(first_u));
+        cur_points_camera_copy.push_back(features_f[id]->pointIncamera(second_u));
     }
-
     Mat points4D;
     Mat firstR,secondR,firstT,secondT;
     Matrix3d firstR_eigen,secondR_eigen;
     Vector3d firstT_eigen,secondT_eigen;
-    firstR_eigen=init_Qs[first].toRotationMatrix();
-    secondR_eigen=init_Qs[second].toRotationMatrix();
-    firstT_eigen=init_ts[first];
-    secondT_eigen=init_ts[second];
+    firstR_eigen=Q_s[first].toRotationMatrix();
+    secondR_eigen=Q_s[second].toRotationMatrix();
+    firstT_eigen=P_s[first];
+    secondT_eigen=P_s[second];
     eigen2cv(firstR_eigen,firstR);
     eigen2cv(secondR_eigen,secondR);
     eigen2cv(firstT_eigen,firstT);
@@ -290,54 +260,14 @@ void Feature_tracking::solvePointsByTri(int first, int second,vector<uint64_t >&
 
     points_position_norm=normalization(points4D);//归一化,转换成非齐次坐标
     int k=0;
-    ///三角化两帧之中所有的特征点
+
+//    ///三角化两帧之中所有的特征点
     for(auto po:points_position_norm)
     {
-        if(po.z<0&&features_f[points_ids[k]]->quality_feature==Feature::bad)
-        {
-            features_f[points_ids[k]]->destoryFeature();
-        }
-        else if(po.z<0)
-        {
-            features_f[points_ids[k]]->quality_feature=Feature::bad;
-        }
-        else if(features_f[points_ids[k]]->if3D)
-        {
-            if(features_f[points_ids[k]]->track_times_>3)
-                features_f[points_ids[k]]->quality_feature=Feature::good;
-            features_f[points_ids[k]]->pose_world_=(po+features_f[points_ids[k]]->pose_world_)/2;
-        }
-        else
-        {
             features_f[points_ids[k]]->pose_world_=po;
             features_f[points_ids[k]]->if3D=true;
-        }
         k++;
     }
-    ///三角化两帧之中特定的特征点
-//    for(auto po:points_position_norm)
-//    {
-//        if(po.z<0&&features_f[pre_points_id_copy[k]]->quality_feature==Feature::bad)
-//        {
-//            features_f[pre_points_id_copy[k]]->destoryFeature();
-//        }
-//        else if(po.z<0)
-//        {
-//            features_f[pre_points_id_copy[k]]->quality_feature=Feature::bad;
-//        }
-//        else if(features_f[pre_points_id_copy[k]]->if3D)
-//        {
-//            if(features_f[pre_points_id_copy[k]]->track_times_>3)
-//                features_f[pre_points_id_copy[k]]->quality_feature=Feature::good;
-//            features_f[pre_points_id_copy[k]]->pose_world_=(po+features_f[pre_points_id_copy[k]]->pose_world_)/2;
-//        }
-//        else
-//        {
-//            features_f[pre_points_id_copy[k]]->pose_world_=po;
-//            features_f[pre_points_id_copy[k]]->if3D=true;
-//        }
-//        k++;
-//    }
     cout<<"Triangulation between---------------------------- "<<first<<"th and "<<second<<"th camera------------------finished!"<<endl;
 }
 
@@ -352,10 +282,11 @@ void Feature_tracking::point_filter(vector<Point2f> &points1, vector<Point2f> &p
 
 //    cout<<"F:"<<F<<endl;
     //根据斜率筛选
+    /*
     for(auto iter2=points2.begin(),iter1=points1.begin();iter2!=points2.end();)
     {
-        aver_k=aver_k+fabs((iter2->y-iter1->y)/(iter2->x+(float)640.0-iter1->x));
-        aver_k_raw=aver_k_raw+(iter2->y-iter1->y)/(iter2->x+(float)640.0-iter1->x);
+        aver_k=aver_k+fabs((iter2->y-iter1->y)/(iter2->x+(float)image_width-iter1->x));
+        aver_k_raw=aver_k_raw+(iter2->y-iter1->y)/(iter2->x+(float)image_width-iter1->x);
         iter1++;
         iter2++;
     }
@@ -365,7 +296,7 @@ void Feature_tracking::point_filter(vector<Point2f> &points1, vector<Point2f> &p
 
     for(auto iter3=points2.begin(),iter4=points1.begin();iter3!=points2.end();)
     {
-        float k=(iter3->y-iter4->y)/(iter3->x+640-iter4->x);
+        float k=(iter3->y-iter4->y)/(iter3->x+image_width-iter4->x);
         if(fabs(k)>1.5*aver_k||(k*aver_k_raw<0&&fabs(k)>0.5*aver_k) )  ///筛选特征点的位置
         {
             points1.erase(iter4);
@@ -378,6 +309,7 @@ void Feature_tracking::point_filter(vector<Point2f> &points1, vector<Point2f> &p
         }
     }
     cout<<"斜率筛选后:"<<points1.size()<<"   "<<points2.size()<<endl;
+     */
     points1.resize(points2.size());
 }
 void Feature_tracking::point_filter(vector<uint64_t > &ids,vector<Point2f> &points1, vector<Point2f> &points2)     //todo 投影到归一化平面中进行畸变校正，然后再进行F矩阵筛选
@@ -390,11 +322,12 @@ void Feature_tracking::point_filter(vector<uint64_t > &ids,vector<Point2f> &poin
 
 //    cout<<"F:"<<F<<endl;
     cout<<"F筛选后:"<<points1.size()<<"   "<<points2.size()<<endl;
+    /*
     //根据斜率筛选
     for(auto iter2=points2.begin(),iter1=points1.begin();iter2!=points2.end();)
     {
-        aver_k=aver_k+fabs((iter2->y-iter1->y)/(iter2->x+(float)640.0-iter1->x));
-        aver_k_raw=aver_k_raw+(iter2->y-iter1->y)/(iter2->x+(float)640.0-iter1->x);
+        aver_k=aver_k+fabs((iter2->y-iter1->y)/(iter2->x+(float)image_width-iter1->x));
+        aver_k_raw=aver_k_raw+(iter2->y-iter1->y)/(iter2->x+(float)image_width-iter1->x);
         iter1++;
         iter2++;
     }
@@ -404,7 +337,7 @@ void Feature_tracking::point_filter(vector<uint64_t > &ids,vector<Point2f> &poin
     auto iter_id=ids.begin();
     for(auto iter3=points2.begin(),iter4=points1.begin();iter3!=points2.end();)
     {
-        float k=(iter3->y-iter4->y)/(iter3->x+640-iter4->x);
+        float k=(iter3->y-iter4->y)/(iter3->x+image_width-iter4->x);
         if(fabs(k)>1.5*aver_k||(k*aver_k_raw<0&&fabs(k)>0.5*aver_k) )  ///筛选特征点的位置
         {
             points1.erase(iter4);
@@ -419,6 +352,7 @@ void Feature_tracking::point_filter(vector<uint64_t > &ids,vector<Point2f> &poin
         }
     }
     cout<<"k筛选后:"<<points1.size()<<"   "<<points2.size()<<endl;
+     */
     points1.resize(points2.size());
     ids.resize(points2.size());
 }
@@ -453,7 +387,7 @@ void Feature_tracking::point_filter(vector<uint64_t >& ids,vector<Point2f> &poin
     //根据斜率筛选
     for(auto iter2=points2.begin(),iter1=points1.begin();iter2!=points2.end();)
     {
-        aver_k=aver_k+fabs((iter2->y-iter1->y)/(iter2->x+(float)640.0-iter1->x));
+        aver_k=aver_k+fabs((iter2->y-iter1->y)/(iter2->x+(float)image_width-iter1->x));
         aver_dist+=sqrt((iter2->y-iter1->y)*(iter2->y-iter1->y)+(iter2->x-iter1->x)*(iter2->x-iter1->x));
         iter1++;
         iter2++;
@@ -464,7 +398,7 @@ void Feature_tracking::point_filter(vector<uint64_t >& ids,vector<Point2f> &poin
     auto iter6=points_position_norm.begin();
     for(auto iter3=points2.begin(),iter4=points1.begin();iter3!=points2.end();)
     {
-        if(fabs((iter3->y-iter4->y)/(iter3->x+640-iter4->x))>1.5*aver_k)   ///筛选特征点的位置
+        if(fabs((iter3->y-iter4->y)/(iter3->x+image_width-iter4->x))>1.5*aver_k)   ///筛选特征点的位置
         {
             points1.erase(iter4);
             points2.erase(iter3);
@@ -493,116 +427,11 @@ bool cmp(DMatch m1,DMatch m2)
     return m1.distance<m2.distance;
 }
 
-Feature_tracking::Feature_tracking(int width, int height)
-        :width_(width),height_(height),init_frame_count(0),aver_x(0),aver_y(0),aver_k(0),aver_k_raw(0),min_init_dist(init_dist)
-{
-
-}
-
-bool Feature_tracking::loadInitImage(const Mat& image,Frame::Ptr& frame)
-{
-    cout<<"loading..."<<init_frame_count<<"th image"<<endl;
-    cur_frame_f=frame;
-
-    //初始化变量
-    vector<Point2f> empty_points;
-    vector<uchar> empty_status;
-    initFeatures_f.push_back(empty_points);//必须先插进去一个空的，否则无法按照编号插入
-//    raw_Features_f.push_back(empty_points);
-    raw_status_f.push_back(empty_status);
-
-    vector<Point2f> pre_points,cur_points;
-    vector<uint64_t > pre_points_ids;
-    vector<uchar> status;
-    vector<float> error;
-
-    if (dist<min_init_dist)//数据太少，不能初始化
-    {
-        aver_x=0;
-        aver_y=0;
-        initImg_f.push_back(image);
-        cur_img_f=image.clone();
-        Mat imshow1=cur_img_f.clone();
-
-        mask = cv::Mat(height_, width_, CV_8UC1, cv::Scalar(255));
-
-        if(init_frame_count!=0)
-        {
-            //设置上一帧的状态
-            pre_img_f=initImg_f[init_frame_count-1].clone();
-//            uint64_t frame_id=(uint64_t)(init_frame_count-1);
-//            pre_points=getFeaturepointsIn(frame_id);
-//            pre_points_ids=getFeatureIdIn(frame_id);
-
-            uint64_t init=0;
-            track_new(init,cur_frame_f->id_);//光流跟踪，第init帧和第frame->id_帧
-        }
-        if(init_frame_count==0)
-        {
-            vector<Point2f> feature_new;//需要补充的点
-            goodFeaturesToTrack(cur_img_f,feature_new,500,0.1,20,mask);//todo 参数定义特征数量和最小距离
-
-            cout<<"第0帧检测到特征点数量:"<<feature_new.size()<<endl;
-
-            for(auto f:feature_new) //把新剔除的点添加到该帧对应的特征点中
-            {
-                Point2f f_nodistort;
-                f_nodistort=Camera::removeDistort(f,camera_k1,camera_k2,camera_p1,camera_p2,camera_k);
-                if((f_nodistort.x<5)||(f_nodistort.y<5)||(f_nodistort.x>475)||(f_nodistort.y>635))
-                {
-                    continue;
-                }
-                initFeatures_f[init_frame_count].push_back(f_nodistort);
-                uint64_t frame_id=(uint64_t)init_frame_count;
-                if(init_frame_count==0)
-                {
-                    addFeature(f_nodistort,frame_id);//为新检测到的特征点创建feature
-                }
-            }
-        }
-
-/* 每帧特征点画图
-        for(auto pt:initFeatures_f[init_frame_count])
-        {
-            circle(imshow1,pt,2,Scalar(0),2);
-        }
-        cout<<"第"<<init_frame_count<<"帧特征点数量："<<initFeatures_f[init_frame_count].size()<<endl;
-        imshow("inshow1",imshow1);
-        imshow("mask1",mask);
-        waitKey(0);
-*/
-        pre_frame_f=cur_frame_f;
-        init_frame_count++;
-        return false;
-    }
-    else
-    {
-        init_frame_flag=init_frame_count-1;
-        init_l=init_frame_flag;
-        initFeatures_f.resize(init_frame_flag+1);
-        raw_status_f.resize(init_frame_flag+1);
-// 打印初始化时所有的特征点
-//        cout<<"所有的特征点："<<endl;
-//        for(auto f:features_f)
-//        {
-//            for(uint64_t p=0;p<f->point_pre_frame.size();p++)
-//            {
-//                cout<<"feature "<<f->id_<<" in Frame "<<f->point_pre_frame[p].first<<" is "<<f->point_pre_frame[p].second<<" and camera frame "<<f->point_pre_camera[p].first<<" is "<<f->point_pre_camera[p].second<<endl;
-//            }
-//        }
-//        waitKey(0);
-
-        return true;
-    }
-}
-
 void Feature_tracking::clearstate()
 {
     R_estimate=(Mat_<double >(3,3)<<1.0,0,0,0,1.0,0,0,0,1.0);
     t_estimate=(Mat_<double >(3,1)<<0,0,0);
-    good_matches.clear();
-    matches.clear();
-//    cur_keypoints.clear();
+
 }
 
 void Feature_tracking::initReset()
@@ -613,33 +442,37 @@ void Feature_tracking::initReset()
 bool Feature_tracking::recoverRT()   //todo 除了设置相机踪的移动的距离，再设定在x y轴上的移动距离
 {
 
-    vector<float> error_l;
-    vector<uchar> status_l;
     vector<Point2f> points_first,points_l;
-    points_first.assign(initFeatures_f[0].begin(),initFeatures_f[0].end());
-    calcOpticalFlowPyrLK(initImg_f[0],initImg_f[init_l],points_first,points_l,status_l,error_l);
-
-    reduceVector(points_first,points_l,status_l);
-    point_filter(points_first,points_l);                            //todo 再用光流跟一下，补充一次特征点，要不然特征点太少了初始化的时候会失败
-
-    if(points_first.size()<15)
+    vector<Point2f> points_first_nodistort,points_l_nodistort;
+    uint64_t id_l=init_frame_count;
+    for(auto feature:features_f)
     {
-        init_l--;
-        cout<<init_l<<endl;
-        return false;
+        if(feature->TrackBy(id_l))
+        {
+            points_first.push_back(feature->point_pre_frame[0].second);
+            points_l.push_back(feature->point_pre_frame[id_l].second);
+            points_first_nodistort.push_back(feature->point_pre_frame_nodistort[0].second);
+            points_l_nodistort.push_back(feature->point_pre_frame_nodistort[id_l].second);
+        }
     }
+    point_filter(points_first_nodistort,points_l_nodistort);
+    //todo 在初始化时特征点太少时需要进一步处理
+//    if(points_first.size()<5)
+//      {}
 
-//    Mat img_show3;
-//    img_show3=showMatch(initImg_f[0],initImg_f[init_l],points_first,points_l);
-//    imshow("solveRT",img_show3);
+    Mat img_show3;
+    img_show3=showMatch(allImg_f[0],allImg_f[id_l],points_first,points_l);
+    imshow("solveRT",img_show3);
 
-    E_f=findEssentialMat(points_first,points_l,camera_k);
+    ROS_INFO_STREAM("WE use "<<points_first.size()<<" points to calc relative RT");
 
-    recoverPose(E_f,points_first,points_l,camera_k,relative_R,relative_t);
+    E_f=findEssentialMat(points_first_nodistort,points_l_nodistort,camera_k);//todo 计算矩阵应该用畸变前还是畸变后
+    recoverPose(E_f,points_first_nodistort,points_l_nodistort,camera_k,relative_R,relative_t);
+
     cv2eigen(relative_R,eigen_R);
     cv2eigen(relative_t,eigen_t);
-//    Eigen::Quaterniond q=Eigen::Quaterniond(eigen_R);
-//    cout<<"q:"<<q.coeffs()<<endl;
+    Eigen::Quaterniond q=Eigen::Quaterniond(eigen_R);
+    cout<<"q:"<<q.coeffs()<<endl;
     return true;
 }
 void Feature_tracking::track_new(uint64_t& pre_frame_id,uint64_t& cur_frame_id)
@@ -652,59 +485,226 @@ void Feature_tracking::track_new(uint64_t& pre_frame_id,uint64_t& cur_frame_id)
     pre_points=getFeaturepointsIn(pre_frame_id);
     pre_points_ids=getFeatureIdIn(pre_frame_id);
 
-    cout<<pre_points.size()<<endl;
-    calcOpticalFlowPyrLK(initImg_f[pre_frame_id],cur_img_f,pre_points,cur_points,status,errors,Size(21, 21), 3);
-
+    cout<<"pre image have "<<pre_points.size()<<" points"<<endl;
+    calcOpticalFlowPyrLK(allImg_f[pre_frame_id],cur_img_f,pre_points,cur_points,status,errors,Size(21, 21), 3);
 
     reduceVector(pre_points_ids,pre_points,cur_points,status);
     //用F矩阵RANSAC剔除误匹配点
-
     point_filter(pre_points_ids,pre_points,cur_points);
 
     Feature::addTrack(features_f,pre_points_ids,cur_frame_id,cur_points,camera_k);
 
-
-    for(auto iter2=cur_points.begin(),iter1=pre_points.begin();iter2!=cur_points.end();)
+    // 计算视差
+    float dx=0,dy=0;
+    for(auto id:pre_points_ids)
     {
-        aver_x=aver_x+fabs(iter2->x-iter1->x);
-        aver_y=aver_y+fabs(iter2->y-iter1->y);
-        iter1++;
-        iter2++;
+        dx+=fabs(features_f[id]->point_pre_frame_nodistort[0].second.x-features_f[id]->point_pre_frame_nodistort[cur_frame_id].second.x);
+        dy+=fabs(features_f[id]->point_pre_frame_nodistort[0].second.y-features_f[id]->point_pre_frame_nodistort[cur_frame_id].second.y);
     }
-    aver_x=aver_x/(float)pre_points.size();
-    aver_y=aver_y/(float)pre_points.size();
-    dist=sqrt(aver_x*aver_x+aver_y*aver_y);
+    dx/=pre_points_ids.size();
+    dy/=pre_points_ids.size();
+    dist=sqrt(dx*dx+dy*dy);
 
     cout<<"第"<<int(cur_frame_id)<<"平均运动距离dist（像素）:"<<dist<<endl;
-    initFeatures_f[init_frame_count].assign(cur_points.begin(),cur_points.end());
-
-    if(pre_points_ids.size()!=cur_points.size())
-    {
-        cout<<"error occurs,pre_points_ids.size()!=cur_points.size()"<<endl;
-        waitKey(0);
-    }
-//    int k=0;
-//    for(auto id:pre_points_ids)
-//        features_f[id]->addTrack(init_frame_count,cur_points[k++]);
-
     Mat img_show2;
-    img_show2=showMatch(initImg_f[pre_frame_id],initImg_f[init_frame_count],pre_points,cur_points);
+    img_show2=showMatch(allImg_f[pre_frame_id],allImg_f[init_frame_count],pre_points,cur_points);
     imshow("Tracking...",img_show2);
-    waitKey(500);
+//    waitKey(0);
 }
+/**
+ *  通过 1-2,2-3,3-4，……，init_l 光流跟踪恢复更多的特征点
+ */
+void Feature_tracking::recoverMoreFeatures()
+{
+    for(uint64_t first=1;first<init_l;first++)
+    {
+        cout<<"begin to extract "<<first<<"'s features "<<endl;
+        vector<Point > pre_points_old;
+        vector<Point2f > pre_points_new;
+        mask = cv::Mat(image_height, image_width, CV_8UC1, cv::Scalar(255));
+        for(auto point:features_f)
+        {
+            if(point->TrackBy(first))
+                pre_points_old.push_back(point->pointIn_raw(first));
+        }
+        cout<<"have old features "<<pre_points_old.size()<<endl;
+        for (auto it : pre_points_old)
+        {
+            if (mask.at<uchar>(it) == 255)
+                circle(mask, it, 2, Scalar(0), -1);
+        }
+        goodFeaturesToTrack(allImg_f[first],pre_points_new,150-pre_points_old.size(),0.1,30,mask);//todo 参数定义特征数量和最小距离
+
+        cout<<"have new features "<<pre_points_new.size()<<endl;
+        for(auto feature_new:pre_points_new)
+            addFeature(feature_new,first);
+
+        vector<Point2f > points_in_first;
+        vector<uint64_t > points_in_first_id;
+        vector<Point2f > points_in_next;
+        vector<uchar > status;
+        vector<float> errors;
+        uint64_t second=first+1;
+
+        for(auto point:features_f)
+        {
+            for(int it=0;it<point->point_pre_frame.size();it++)
+            {
+                if((point->point_pre_frame[it].first==first)&&(!point->TrackBy(second)))
+                {
+                    points_in_first.push_back(point->point_pre_frame[it].second);
+                    points_in_first_id.push_back(point->id_);
+                }
+
+            }
+        }
+        calcOpticalFlowPyrLK(allImg_f[first],allImg_f[second],points_in_first,points_in_next,status,errors);
+        reduceVector(points_in_first_id,points_in_first,points_in_next,status);
+        point_filter(points_in_first_id,points_in_first,points_in_next);
+        int it=0;
+        for(auto id:points_in_first_id)
+        {
+            Point2f point_nodistort;
+            //removeDistort:先投影到归一化平面，再进行畸变校正，再反投影回图像平面
+            point_nodistort = Camera::removeDistort(points_in_next[it], camera_k1, camera_k2, camera_p1, camera_p2,
+                                                    camera_k);
+            if ((point_nodistort.x < 5) || (point_nodistort.y < 5) || (point_nodistort.x > (cur_img_f.cols - 5)) ||
+                (point_nodistort.y > (cur_img_f.rows - 5))) {
+                continue;
+            }
+            features_f[id]->addTrack(second, points_in_next[it], point_nodistort);
+            it++;
+        }
+        Mat img_show4;
+        img_show4=showMatch(allImg_f[first],allImg_f[second],points_in_first,points_in_next);
+        imshow("recoverMoreFeatures...",img_show4);
+//        waitKey(0);
+    }
+}
+/**
+ * 将没有深度的特征点恢复出特征点
+ */
+void Feature_tracking::recover3dPoseOfFeature()
+{
+    for(int pre=1;pre<init_l;pre++)
+    {
+        vector<uint64_t >pre_points_id;
+        vector<Point2f> pre_points,cur_points;
+        uint64_t pre_u=pre;
+        uint64_t cur_u=pre_u+1;
+        for(auto feature:features_f)
+        {
+            if((feature->TrackBy(pre_u))&&(feature->TrackBy(cur_u))&&(!feature->if3D))
+            {
+                pre_points.push_back(feature->pointIn_nodistort(pre_u));
+                pre_points_id.push_back(feature->id_);
+                cur_points.push_back(feature->pointIn_nodistort(cur_u));
+            }
+        }
+        cout<<"pre_points_id to solve 3D"<<pre_points_id.size()<<endl;
+        solvePointsByTri(pre_u,cur_u,pre_points_id,pre_points,cur_points);
+    }
+
+}
+bool Feature_tracking::optimize()
+{
+    double c_rotation[init_l+1][4];//存放c_Quat的w x y z
+    double c_translation[init_l+1][3];//存放c_Translation的x y z
+    ceres::Problem problem;
+    ceres::LocalParameterization* quater= new ceres::QuaternionParameterization();
+
+    for(int i=0;i<=init_l;i++)
+    {
+        c_rotation[i][0]=Q_s[i].w();
+        c_rotation[i][1]=Q_s[i].x();
+        c_rotation[i][2]=Q_s[i].y();
+        c_rotation[i][3]=Q_s[i].z();
+        c_translation[i][0]=P_s[i].x();
+        c_translation[i][1]=P_s[i].y();
+        c_translation[i][2]=P_s[i].z();
+        problem.AddParameterBlock(c_rotation[i],4,quater);
+        problem.AddParameterBlock(c_translation[i],3);
+        if(i==init_l||i==0)
+        {
+            problem.SetParameterBlockConstant(c_rotation[i]);
+            problem.SetParameterBlockConstant(c_translation[i]);
+        }
+    }
+    double position[features_f.size()][3];
+    for(int i=0;i<features_f.size();i++)
+    {
+        if(features_f[i]->if3D)
+        {
+            for(int j=0;j<features_f[i]->point_pre_camera.size();j++)
+            {
+                position[i][0]=features_f[i]->pose_world_.x;
+                position[i][1]=features_f[i]->pose_world_.y;
+                position[i][2]=features_f[i]->pose_world_.z;
+
+                int id=features_f[i]->point_pre_camera[j].first;//帧id
+                ceres::CostFunction* cost_function=ReprojectionError::creat(features_f[i]->point_pre_camera[j].second.x,features_f[i]->point_pre_camera[j].second.y);
+                problem.AddResidualBlock(cost_function,NULL,c_rotation[id],c_translation[id],position[i]);
+            }
+        }
+    }
+    ceres::Solver::Options options;
+    options.linear_solver_type=ceres::DENSE_SCHUR;
+    options.minimizer_progress_to_stdout=true;
+    options.max_solver_time_in_seconds=0.2;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    cout<<summary.BriefReport()<<endl;
+    if(summary.termination_type==ceres::CONVERGENCE||summary.final_cost<5e-03)
+    {
+        cout<<"Optimize success!"<<endl;
+    }
+    else
+    {
+        cout<<"Optimize fail!"<<endl;
+        return false;
+    }
+
+    for(int i=0;i<=init_l;i++)
+    {
+        Q_s[i].w()=c_rotation[i][0];
+        Q_s[i].x()=c_rotation[i][1];
+        Q_s[i].y()=c_rotation[i][2];
+        Q_s[i].z()=c_rotation[i][3];
+        P_s[i].x()=c_translation[i][0];
+        P_s[i].y()=c_translation[i][1];
+        P_s[i].z()=c_translation[i][2];
+    }
+    for(int i=0;i<features_f.size();i++)
+    {
+        if(features_f[i]->if3D)
+        {
+            cout<<"error before:"<<i<<" "<<features_f[i]->pose_world_.x<<" "<<features_f[i]->pose_world_.y<<" "<<features_f[i]->pose_world_.z<<endl;
+            cout<<"error after:"<<i<<" "<<position[i][0]<<" "<<position[i][1]<<" "<<position[i][2]<<endl;
+            cout<<"error term:"<<i<<" "<<position[i][0]-features_f[i]->pose_world_.x<<" "<<position[i][1]-features_f[i]->pose_world_.y<<" "<<position[i][2]-features_f[i]->pose_world_.z<<endl;
+            if(fabs(position[i][0]-features_f[i]->pose_world_.x)>5||fabs(position[i][1]-features_f[i]->pose_world_.y)>5||fabs(position[i][2]-features_f[i]->pose_world_.z)>10)
+            {
+                features_f[i]->if3D=false;
+                cout<<"remove this point----------------------------------------------------------"<<endl;
+                continue;
+            }
+            features_f[i]->pose_world_.x=position[i][0];
+            features_f[i]->pose_world_.y=position[i][1];
+            features_f[i]->pose_world_.z=position[i][2];
+        }
+    }
+}
+
 
 void Feature_tracking::recoverStructure()
 {
     vector<Point2f> pre_points_cam,cur_points_cam;
-    init_Qs.resize(init_frame_flag+1);//设置大小
-    init_ts.resize(init_frame_flag+1);
-
-    //设置首帧和第l帧位姿（Q，t）
-    init_Qs[0].setIdentity();
-    init_ts[0].setZero();
-    init_Qs[init_l]=Eigen::Quaterniond (eigen_R);
-    init_ts[init_l]=Eigen::Vector3d (eigen_t);
-
+    Q_s.resize(init_frame_flag+1);//设置大小
+    P_s.resize(init_frame_flag+1);
+    //设置首帧和第l帧位姿（Q，P）
+    Q_s[0].setIdentity();
+    P_s[0].setZero();
+    Q_s[init_l]=Eigen::Quaterniond (eigen_R);
+    P_s[init_l]=Eigen::Vector3d (eigen_t);
     //转换成Mat形式便于三角化
     Mat first_pose;
     first_pose=(Mat_<double>(3,4) <<
@@ -717,91 +717,43 @@ void Feature_tracking::recoverStructure()
                 relative_R.at<double>(1,0),relative_R.at<double>(1,1),relative_R.at<double>(1,2),relative_t.at<double>(1,0),
                 relative_R.at<double>(2,0),relative_R.at<double>(2,1),relative_R.at<double>(2,2),relative_t.at<double>(2,0));
     cout<<"第l帧位姿，l_pose:"<<endl<<l_pose<<endl;
-
     //用最开始的光流信息进行跟踪，先进行拷贝
-    vector<Point2f> pre_raw_Features_f,cur_raw_Features_f;
-    vector<uint64_t > pre_raw_Features_id;
-    //todo 代替raw_Features_f
+    vector<Point2f> pre_Features,cur_Features;
+    vector<uint64_t > pre_Features_id;
 
     for(auto point:features_f)
     {
         uint64_t init=0;
-        uint64_t finish=(uint64_t)init_frame_flag;
-        if(point->TrackBy(init)&&point->TrackBy(finish))
+        uint64_t finish=init_frame_flag;
+        cout<<"finish"<<finish<<endl;
+        if(point->TrackBy(finish))
         {
-            pre_raw_Features_f.push_back(point->pointIn(init));
-            pre_raw_Features_id.push_back(point->id_);
-            cur_raw_Features_f.push_back(point->pointIn(finish));
+            pre_Features_id.push_back(point->id_);
+            pre_points_cam.push_back(point->pointIncamera(init));
+            cur_points_cam.push_back(point->pointIncamera(finish));
         }
     }
-
-    cout<<"共同观测点："<<pre_raw_Features_id.size()<<endl;
+    cout<<"共同观测点："<<pre_Features_id.size()<<endl;
     //剔除+筛选
-    point_filter(pre_raw_Features_id,pre_raw_Features_f,cur_raw_Features_f);
 //    Mat imshow5;
-//    imshow5=showMatch(initImg_f[0],initImg_f[init_frame_flag],pre_raw_Features_f,cur_raw_Features_f);
+//    imshow5=showMatch(allImg_f[0],allImg_f[init_frame_flag],pre_Features,cur_Features);
 //    imshow("光流三角化0-l",imshow5);
 
-    //变换到相机坐标系，才能进行三角化
+    //变换到相机坐标系归一化平面，才能进行三角化
     vector<Point3d> points_position_norm;//三角化恢复出的3D特征点,第一帧的相机中
-    Mat points4D;
-    for(int j=0;j<pre_raw_Features_f.size();j++)
-    {
-        pre_points_cam.push_back(Camera::uv2camera(pre_raw_Features_f[j],camera_k));
-        cur_points_cam.push_back(Camera::uv2camera(cur_raw_Features_f[j],camera_k));
-    }
-/*
-    for(auto pc:pre_points_cam)
-    {
-        cout<<"camera"<<":"<<pc.x<<","<<pc.y<<","<<endl;
-    }
-    */
+    Mat points4D;//三角化得到的是其次坐标
+
     triangulatePoints(first_pose,l_pose,pre_points_cam,cur_points_cam,points4D);
-/*
-    for(int n=0;n<points4D.cols;n++)
-    {
-        cout<<points4D.col(n)<<endl;
-        cout<<endl;
-    }
-*/
+
     points_position_norm=normalization(points4D);//归一化,转换成非齐次坐标
     int k=0;
     for(auto po:points_position_norm)
     {
-        features_f[pre_raw_Features_id[k]]->pose_world_=po;
-        features_f[pre_raw_Features_id[k]]->if3D=true;
+        features_f[pre_Features_id[k]]->pose_world_=po;
+        features_f[pre_Features_id[k]]->if3D=true;
         k++;
     }
-cout<<"................................................finish RT and tri between two..............................................."<<endl;
-//    waitKey(0);
-
-    //用第一帧与其他帧之间进行pnp求解相机位姿
-cout<<".......................................................Begin pnp and tri..............................................."<<endl;
-    for(int num=1;num<=init_l;num++)
-    {
-       int init =0;
-       solveCamPoseByPnP(init,num);   //根据第0帧位姿计算第1帧到第l-1帧的位姿，并三角化点
-//        waitKey(0);
-    }
-
-//    uint64_t frame=0;
-//    while(1)
-//    {
-//        cout<<(int) frame<<endl;
-//        Mat imgtest=initImg_f[frame].clone();
-//        for(auto f:features_f)
-//        {
-//
-//            if(f->TrackBy(frame))
-//            {
-//                circle(imgtest,f->pointIn(frame),2,0,2);
-//            }
-//        }
-//        imshow("test",imgtest);
-//        waitKey(0);
-//        frame++;
-//    }
-
+    /*
     int count=0;
     for(auto p:features_f)
     {
@@ -814,154 +766,147 @@ cout<<".......................................................Begin pnp and tri.
 //        cout<<"feature "<<f->id_<<" times: "<<f->track_times_<<" in Frame "<<f->point_pre_frame.size()<<" in camera "<<f->point_pre_camera.size()<<endl;
         for(uint64_t p=0;p<f->point_pre_frame.size();p++)
         {
-
-//            cout<<"feature "<<f->id_<<" is "<<f->quality_feature<<" in Frame "<<f->point_pre_frame[p].first<<" is "<<f->point_pre_frame[p].second<<" and camera frame "<<f->point_pre_camera[p].first<<" is "<<f->point_pre_camera[p].second<<" and his pose is "<<f->pose_world_<<endl;
+            cout<<"feature "<<f->id_<<" is "<<f->quality_feature<<" in Frame "<<f->point_pre_frame[p].first<<" is "<<f->point_pre_frame[p].second<<" and camera frame "<<f->point_pre_camera[p].first<<" is "<<f->point_pre_camera[p].second<<" and his pose is "<<f->pose_world_<<endl;
         }
     }
     cout<<"具有深度的特征点数量："<<count<<endl;
-//    waitKey(0);
-  ///显示特征点
-    //todo 再利用光流跟踪恢复更多特征点的深度，注意当深度恢复不一致时，要筛选
-//    for(int num=1;num<=init_l;num++)
-//    {
-//        int init =0;
-//        solveCamPoseByPnP(init,num);   //根据第0帧位姿计算第1帧到第l-1帧的位姿，并三角化点
-//        waitKey(0);
-//    }
-    //todo 融合特征点，全部恢复之后完成与边恢复位姿一样
+    waitKey(0);*/
 
-    for(uint64_t first=1;first<=init_l-1;first++)
+    cout<<"................................................finish RT and tri between two..............................................."<<endl;
+    cout<<".......................................................Begin pnp ..............................................."<<endl;
+    for(int num=1;num<init_l;num++)
     {
-        vector<Point2f > pre_points_new;
-        vector<Point2f > pre_points_new_copy;
-        mask = cv::Mat(height_, width_, CV_8UC1, cv::Scalar(255));
-        for (auto it : initFeatures_f[first])
+       int init =0;
+       solveCamPoseByPnP(init,num);   //根据第0帧位姿计算第1帧到第l-1帧的位姿，并三角化点
+    }
+    cout<<"................................................. pnp finished..............................................."<<endl;
+    cout<<"................................................. Begin recoverMoreFeatures..............................................."<<endl;
+    recoverMoreFeatures();
+    cout<<"................................................. recoverMoreFeatures finished..............................................."<<endl;
+    cout<<"................................................. Begin recover3dPoseOfFeature..............................................."<<endl;
+    recover3dPoseOfFeature();
+    cout<<"................................................. recover3dPoseOfFeature finished..............................................."<<endl;
+    /*
+    for(auto f:features_f)
+    {
+        for(uint64_t p=0;p<f->point_pre_frame.size();p++)
         {
-            if (mask.at<uchar>(it) == 255)
-            {
-                cv::circle(mask, it, 1, 0, -1);
-            }
-        }
-        goodFeaturesToTrack(initImg_f[first],pre_points_new,500-initFeatures_f[first].size(),0.1,20,mask);//todo 参数定义特征数量和最小距离
-        int feature_number=features_f.size();     //第一个新加入的特征的id
-
-        vector<Point2f>::iterator iter;
-
-        for(iter=pre_points_new.begin();iter!=pre_points_new.end();) //把新剔除的点添加到该帧对应的特征点中,使用引用，直接进行变换
-        {
-            Point2f f=*iter;
-            f=Camera::removeDistort(f,camera_k1,camera_k2,camera_p1,camera_p2,camera_k);
-            if((f.x<5)||(f.y<5)||(f.x>475)||(f.y>635))
-            {
-                pre_points_new.erase(iter);
-                continue;
-            }
-            initFeatures_f[first].push_back(f);
-            uint64_t frame_id=(uint64_t)first;
-            addFeature(f,frame_id);//为新检测到的特征点创建feature
-            iter++;
-        }
-
-        int feature_count=pre_points_new.size();  //新加入特征的个数
-        vector<uint64_t > ids;
-        for(uint64_t id=feature_number;id<(feature_number+feature_count);id++)
-        {
-            ids.push_back(id);
-        }
-        for(uint64_t second=first+1;second<=init_l;second++)
-        {
-            cout<<"second:"<<second<<endl;
-            vector<uint64_t > ids_copy=ids;
-            pre_points_new_copy=pre_points_new;
-            vector<Point2f > cur_points_new;
-            vector<uchar > status;
-            vector<float> errors;
-
-            calcOpticalFlowPyrLK(initImg_f[first],initImg_f[second],pre_points_new_copy,cur_points_new,status,errors);
-            reduceVector(ids_copy,pre_points_new_copy,cur_points_new,status);
-            point_filter(ids_copy,pre_points_new_copy,cur_points_new);
-
-            int l=0;
-            for(auto id:ids_copy)
-            {
-                Point2f& f=cur_points_new[l++];
-                cout<<"pre"<<f<<endl;
-                f=Camera::removeDistort(f,camera_k1,camera_k2,camera_p1,camera_p2,camera_k);
-                cout<<"cur"<<f<<endl;
-                features_f[id]->addTrack(second,f);//todo 什么问题啊我去
-                features_f[id]->point_pre_camera.push_back(make_pair(second,Camera::uv2camera(f,camera_k)));
-                initFeatures_f[second].push_back(f);
-            }
-
-            solvePointsByTri(first,second,ids_copy,pre_points_new_copy,cur_points_new);
-            Mat img;
-            img= showMatch(initImg_f[first],initImg_f[second],pre_points_new_copy,cur_points_new);
-            imshow("new",img);
-            waitKey(500);
+            cout<<"feature "<<f->id_<<" in Frame "<<f->point_pre_frame[p].first<<" is "<<f->point_pre_frame[p].second<<" and camera frame "<<f->point_pre_camera[p].first<<" is "<<f->point_pre_camera[p].second<<" pose is "<<f->pose_world_<<endl;
         }
     }
-    cout<<"now we have features number: "<<features_f.size()<<endl;
-        for(auto f:features_f)
-        {
-            for(uint64_t p=0;p<f->point_pre_frame.size();p++)
-            {
-                cout<<"feature "<<f->id_<<" in Frame "<<f->point_pre_frame[p].first<<" is "<<f->point_pre_frame[p].second<<" and camera frame "<<f->point_pre_camera[p].first<<" is "<<f->point_pre_camera[p].second<<" pose is "<<f->pose_world_<<endl;
-            }
-        }
-//        waitKey(0);
-    for(int first=0;first<init_l;first++)
-    {
-        mask = cv::Mat(height_, width_, CV_8UC1, cv::Scalar(255));
-        for (auto it : initFeatures_f[first])
-        {
-
-            if (mask.at<uchar>(it) == 255)
-            {
-                cv::circle(mask, it, 2, 0, -1);
-            }
-
-        }
-//        imshow("mask",mask);
-//        waitKey(0);
-    }
-
-    // TODO 融合相近的特征点
-
-    //Feature::fuseSameFeature(features_f,init_l);
-
-
+    waitKey(0);
     for(int cam=0;cam<init_frame_flag+1;cam++)
     {
         cout<<"camera"<<cam<<":"<<endl;
-        cout<<init_Qs[cam].toRotationMatrix()<<endl;
-        cout<<init_ts[cam]<<endl;
+        cout<<Q_s[cam].toRotationMatrix()<<endl;
+        cout<<P_s[cam]<<endl;
     }
-//    waitKey(0);
+    waitKey(0);
+     */
 }
 void Feature_tracking::fuseFeatures(uint64_t id)
 {
 
 }
+/**
+ * @brief
+ * 1.calc the relative RT between image 0 and image l
+ * @return if successful
+ */
 bool Feature_tracking::initialization()
 {
-    cout<<"Begin initialization..."<<endl;
-
     bool RT=false;
     while(!RT)
     {
+        //todo 增加初始化时RT的精度
         RT=recoverRT();//通过第1帧和第l帧恢复相机的位姿，relative_R,relative_t todo 可以添加参数，设置第一帧与第几帧进行初始化
     }
-    cout<<"R:"<<relative_R<<endl;
-    cout<<"t:"<<relative_t<<endl;
-    recoverStructure();
-
-    //todo 设置第一帧和第l帧的位姿---SE3
-
-    //todo 第一帧和第l帧三角化，恢复特征3D坐标（注意像素、相机、世界坐标系之间的转换），并去除畸变
-
-    //todo 通过光流（之前的数据已经保存），pnp，三角化，恢复初始化这几帧 相机的RT，用两帧之间的优化，和局部BA优化
-
+    cout<<"------------------------------finish solve R T...----------------------------------"<<endl;
     waitKey(0);
+    recoverStructure();
+    cout<<"------------------------------finish recoverStructure...----------------------------------"<<endl;
+    waitKey(0);
+    //todo 局部BA优化
+    bool optimize_state;
+    optimize_state=optimize();//优化，并将优化后位置变化很大的特征点if3D置为false
+    cout<<"optimize_state:"<<optimize_state<<endl;
+    cout<<"------------------------------finish optimize features and camera pose...----------------------------------"<<endl;
+    waitKey(0);
+
+    return optimize_state;//优化成功则视为初始化成功
+}
+/**
+ * @brief
+ * 1.Load image and extract features
+ * 2.add features to features_f
+ * 3.track to initialization
+ * @param image
+ * @param frame
+ * @return if the distance is enough to initialization
+ */
+bool Feature_tracking::loadInitImage(const Mat& image,Frame::Ptr& frame)
+{
+    init_frame_count++;
+    cout<<"loading init frame...init_frame_count:"<<init_frame_count<<"th image"<<endl;
+
+        cur_frame_f=frame;
+
+        allImg_f.push_back(image);
+        cur_img_f=image.clone();
+        Mat imshow1=cur_img_f.clone();
+        mask = cv::Mat(image_height, image_width, CV_8UC1, cv::Scalar(255));
+
+        if(init_frame_count!=0)
+        {
+            //设置上一帧的状态
+            pre_img_f=allImg_f[init_frame_count-1].clone();
+            uint64_t pre=init_frame_count-1;
+            track_new(pre,cur_frame_f->id_);//光流跟踪，第init帧和第frame->id_帧
+        }
+        if(init_frame_count==0)
+        {
+            vector<Point2f> feature_new;//需要补充的点
+            goodFeaturesToTrack(cur_img_f,feature_new,150,0.1,30,mask);//todo 参数定义特征数量和最小距离
+
+            cout<<"第0帧检测到特征点数量:"<<feature_new.size()<<endl;
+            for(auto f:feature_new) //把新剔除的点添加到该帧对应的特征点中
+            {
+                uint64_t frame_id=(uint64_t)init_frame_count;
+                addFeature(f,frame_id);//为新检测到的特征点创建feature
+            }
+//            for(auto pt:feature_new)
+//            {
+//                circle(imshow1,pt,2,Scalar(0),2);
+//            }
+//            cout<<"第"<<init_frame_count<<"帧特征点数量："<<feature_new.size()<<endl;
+//            imshow("inshow1",imshow1);
+//            imshow("mask1",mask);
+//            waitKey(0);
+        }
+    cout<<"dist:"<<dist<<endl;
+        pre_frame_f=cur_frame_f;
+    if(dist<init_dist)
+        return false;
+    else
+    {
+        //todo 设置状态量,如果初始化的判定需要改的话就需要改这个
+
+
+        init_frame_flag=init_frame_count;
+        init_l=init_frame_flag;
+/* 打印初始化时所有的特征点
+        cout<<"所有的特征点："<<endl;
+        for(auto f:features_f)
+        {
+            for(uint64_t p=0;p<f->point_pre_frame.size();p++)
+            {
+                cout<<"feature "<<f->id_<<" in Frame "<<f->point_pre_frame[p].first<<" is "<<f->point_pre_frame[p].second<<" and camera frame "<<f->point_pre_camera[p].first<<" is "<<f->point_pre_camera[p].second<<endl;
+            }
+        }
+        waitKey(0);
+        */
+        return true;
+    }
 }
 
 

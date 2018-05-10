@@ -21,5 +21,5 @@
 extern ros::Publisher pub_image;
 
 void setPublishers(ros::NodeHandle &n);
-void PubImage(sensor_msgs::ImagePtr &raw_image);
+void PubImage(sensor_msgs::ImageConstPtr &raw_image);
 #endif //MYPROJECT_PUBLISHERS_H

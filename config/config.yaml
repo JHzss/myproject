@@ -9,15 +9,23 @@ image_topic: /cam0/image_raw
 
 # camera intrinsics
 # fr1
-camera.fx: 471.306408
-camera.fy: 473.469215
-camera.cx: 312.643040
-camera.cy: 242.313989
+#camera.fx: 471.306408
+#camera.fy: 473.469215
+#camera.cx: 312.643040
+#camera.cy: 242.313989
+#camera.k1: 0.262383
+#camera.k2: -0.953104
+#camera.p1: -0.005358
+#camera.p2: 0.002628
 
-camera.k1: 0.262383
-camera.k2: -0.953104
-camera.p1: -0.005358
-camera.p2: 0.002628
+camera.fx: 461.6
+camera.fy: 460.3
+camera.cx: 363.0
+camera.cy: 248.1
+camera.k1: -0.2917
+camera.k2: 0.08228
+camera.p1: 0.00005333
+camera.p2: -0.0001578
 
 # VO paras
 number_of_features: 500
@@ -29,14 +37,32 @@ min_inliers: 10
 keyframe_rotation: 0.1
 keyframe_translation: 0.1
 
-acc_n: 0.0125
-acc_w: 0.02067
-gyr_n: 0.0006
-gyr_w: 0.000136
+#acc_n: 0.0125
+#acc_w: 0.02067
+#gyr_n: 0.0006
+#gyr_w: 0.000136
+acc_n: 0.2          # accelerometer measurement noise standard deviation. #0.2
+gyr_n: 0.02         # gyroscope measurement noise standard deviation.     #0.05
+acc_w: 0.0002         # accelerometer bias random work noise standard deviation.  #0.02
+gyr_w: 0.00002       # gyroscope bias random work noise standard deviation.     #4.0e-5
+g_norm: 9.81007     # gravity magnitude
 
-image.width: 640
+image.width: 752
 image.height: 480
 slideWindowsize:10
 #min movement when init
-init_dist:60
+init_dist:30
 
+extrinsicRotation: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [0, -1, 0, 
+           1, 0, 0, 
+           0, 0, 1]
+#Translation from camera frame to imu frame, imu^T_cam
+extrinsicTranslation: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [-0.02,-0.06, 0.01]

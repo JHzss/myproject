@@ -38,7 +38,8 @@ public:
     } SystemStatus_;
 
     void Imu_process(vector<sensor_msgs::ImuPtr> imus);
-    void track(pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImagePtr> measurement);
+    void Image_process(sensor_msgs::ImageConstPtr image_ptr);
+    void track(pair<vector<sensor_msgs::ImuPtr>,sensor_msgs::ImageConstPtr> measurement);
     void Imu_Visual_align();
 
     void slideWindow();                      //边缘化，控制变量
@@ -63,9 +64,9 @@ public:
 //    PreIntegration::Ptr preIntegrations[200];
     Vector3d position[(WINDOW_SIZE+1)];
     Vector3d velocity[(WINDOW_SIZE+1)];
-    Quaterniond rotate_q[(WINDOW_SIZE+1)];
-    Vector3d ba[(WINDOW_SIZE+1)];
-    Vector3d bg[(WINDOW_SIZE+1)];
+    Eigen::Quaterniond rotate_q[(WINDOW_SIZE+1)];
+    vector<Vector3d> image_ba_s,image_bg_s;
+//    Vector3d bg[(WINDOW_SIZE+1)];
 
 
     Feature_tracking::Ptr tracker_s;         //特征跟踪
@@ -74,6 +75,7 @@ public:
     Mat currImg_s;
     KeyFrame::Ptr refKeyFrame_s;             //当前参考帧
 
+    int initialization_frame_count;          //初始化用到的帧的最大id，即数目为initialization_frame_count+1
     int frame_count;                        //frame 计数
 
 //    Read_dataset::Ptr dataset_s;             //数据集读取

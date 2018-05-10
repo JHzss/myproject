@@ -23,12 +23,12 @@ public:
     vector<uint64_t > features_id_lists_;
     vector<Point2d> points_cam_;//Frame中的特征点转换到相机坐标系
     vector<Point3d> points_world_;//Frame中的特征点转换到世界坐标系
-    SE3 T_c2w;//相机位姿
-    SE3 T_w2c;
+    Eigen::Quaterniond pose_q;
+    Vector3d pose_t;
+    SE3 Pose_c2w;//相机位姿
+    SE3 Pose_w2c;
     const Camera::Ptr camara_;//该Frame所在的相机
     const Mat img_;
-    Eigen::Matrix3d R_;
-    Vector3d t_;
 
 public:
     Frame(const Mat& img, const double& timeStamps);

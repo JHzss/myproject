@@ -20,13 +20,13 @@ using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
-using Eigen::Quaterniond;
+using Eigen::Quaterniond;//Eigen中的四元数将w放在最后面
 //有的sophus版本要改成.h
 #include <sophus/se3.hpp>
 #include <sophus/so3.hpp>
 using Sophus::SE3;
 using Sophus::SO3;
-using Sophus::Quaterniond;
+//using Sophus::Quaterniond;
 
 #include <vector>
 #include <list>
